@@ -4,8 +4,6 @@ plugins {
     kotlin("jvm") version "2.2.21"
     kotlin("plugin.spring") version "2.2.21"
     kotlin("plugin.jpa") version "2.2.21"
-    // Querydsl은 KSP 공식 미지원으로 KAPT 사용 (Kotlin 2.x deprecated이나 현재 유일한 안정 방법)
-    kotlin("kapt") version "2.2.21"
     id("org.springframework.boot") version "4.0.3"
     id("io.spring.dependency-management") version "1.1.7"
 }
@@ -24,7 +22,6 @@ repositories {
     mavenCentral()
 }
 
-val querydslVersion = "5.1.0"
 val jjwtVersion = "0.12.6"
 
 dependencies {
@@ -46,9 +43,8 @@ dependencies {
     runtimeOnly("io.jsonwebtoken:jjwt-impl:$jjwtVersion")
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:$jjwtVersion")
 
-    // Querydsl: Spring Boot 3+ Jakarta EE 전환 후 :jakarta classifier 필수
-    implementation("com.querydsl:querydsl-jpa:$querydslVersion:jakarta")
-    kapt("com.querydsl:querydsl-apt:$querydslVersion:jakarta")
+    // Kotlin JDSL: 코드 생성 없이 KProperty 기반 타입 안전 동적 쿼리
+    implementation("com.linecorp.kotlin-jdsl:spring-data-jpa-boot4-support:3.8.0")
 
     // Database
     runtimeOnly("com.mysql:mysql-connector-j")
@@ -80,10 +76,6 @@ kotlin {
     compilerOptions {
         freeCompilerArgs.addAll("-Xjsr305=strict", "-Xannotation-default-target=param-property")
         jvmTarget = JvmTarget.JVM_21
-    }
-    // KAPT로 생성된 Q-class를 컴파일 소스셋에 등록
-    sourceSets.main {
-        kotlin.srcDir(layout.buildDirectory.dir("generated/source/kapt/main"))
     }
 }
 

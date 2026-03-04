@@ -1,0 +1,23 @@
+{
+  "auth": {
+    "login": {
+      "title": "Sign In",
+      "emailLabel": "Email",
+      "emailPlaceholder": "email@example.com",
+      "passwordLabel": "Password",
+      "submitButton": "Sign In",
+      "signupLink": "Don't have an account? Sign Up",
+      "errorMessage": "Invalid email or password."
+    },
+    "signup": {
+      "title": "Sign Up",
+      "emailLabel": "Email",
+      "emailPlaceholder": "email@example.com",
+      "passwordLabel": "Password",
+      "passwordHint": "At least 8 characters.",
+      "submitButton": "Sign Up",
+      "loginLink": "Already have an account? Sign In",
+      "successMessage": "Account created. Please sign in."
+    }
+  }
+}
