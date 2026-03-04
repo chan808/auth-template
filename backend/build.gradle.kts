@@ -72,6 +72,7 @@ dependencies {
     testImplementation("com.ninja-squad:springmockk:4.0.2")
     testImplementation("org.testcontainers:testcontainers-junit-jupiter")
     testImplementation("org.testcontainers:testcontainers-mysql")
+    testImplementation("org.testcontainers:testcontainers") // GenericContainer (Redis 등)
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 

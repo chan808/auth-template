@@ -4,7 +4,8 @@ spring:
 
   datasource:
     # 환경변수 미설정 시 로컬 기본값 fallback: 실수로 운영 DB 연결 방지
-    url: ${DB_URL:jdbc:mysql://localhost:3306/auth_template?serverTimezone=Asia/Seoul&characterEncoding=utf8mb4&useSSL=false&allowPublicKeyRetrieval=true}
+    # characterEncoding: Java charset 이름(UTF-8) 사용 — utf8mb4는 MySQL 내부 이름으로 JDBC에서 미지원
+    url: ${DB_URL:jdbc:mysql://localhost:3306/auth_template?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true}
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver

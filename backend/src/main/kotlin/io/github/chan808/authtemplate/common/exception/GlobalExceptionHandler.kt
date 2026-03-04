@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.http.ProblemDetail
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.MethodArgumentNotValidException
+import org.springframework.web.bind.MissingRequestHeaderException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import java.net.URI
@@ -25,6 +26,12 @@ class GlobalExceptionHandler {
         val fieldErrors = ex.bindingResult.fieldErrors.associate { it.field to (it.defaultMessage ?: "유효하지 않은 값") }
         val detail = buildProblemDetail(ErrorCode.INVALID_INPUT, ErrorCode.INVALID_INPUT.message, request.requestURI)
         detail.setProperty("errors", fieldErrors)
+        return ResponseEntity.badRequest().body(detail)
+    }
+
+    @ExceptionHandler(MissingRequestHeaderException::class)
+    fun handleMissingHeader(ex: MissingRequestHeaderException, request: HttpServletRequest): ResponseEntity<ProblemDetail> {
+        val detail = buildProblemDetail(ErrorCode.INVALID_INPUT, "필수 헤더 누락: ${ex.headerName}", request.requestURI)
         return ResponseEntity.badRequest().body(detail)
     }
 
