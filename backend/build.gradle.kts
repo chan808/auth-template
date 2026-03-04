@@ -1,0 +1,98 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+plugins {
+    kotlin("jvm") version "2.2.21"
+    kotlin("plugin.spring") version "2.2.21"
+    kotlin("plugin.jpa") version "2.2.21"
+    // Querydsl은 KSP 공식 미지원으로 KAPT 사용 (Kotlin 2.x deprecated이나 현재 유일한 안정 방법)
+    kotlin("kapt") version "2.2.21"
+    id("org.springframework.boot") version "4.0.3"
+    id("io.spring.dependency-management") version "1.1.7"
+}
+
+group = "io.github.chan808"
+version = "0.0.1-SNAPSHOT"
+description = "auth-template"
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+val querydslVersion = "5.1.0"
+val jjwtVersion = "0.12.6"
+
+dependencies {
+    // Web & Security
+    implementation("org.springframework.boot:spring-boot-starter-webmvc")
+    implementation("org.springframework.boot:spring-boot-starter-security")
+    implementation("org.springframework.boot:spring-boot-starter-validation")
+
+    // Data
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+    implementation("org.springframework.boot:spring-boot-starter-data-redis")
+
+    // Kotlin / Jackson 3 (Boot 4.x 기본)
+    implementation("org.jetbrains.kotlin:kotlin-reflect")
+    implementation("tools.jackson.module:jackson-module-kotlin")
+
+    // JWT: jjwt-impl/jackson은 구현 교체 가능성을 위해 runtimeOnly 격리
+    implementation("io.jsonwebtoken:jjwt-api:$jjwtVersion")
+    runtimeOnly("io.jsonwebtoken:jjwt-impl:$jjwtVersion")
+    runtimeOnly("io.jsonwebtoken:jjwt-jackson:$jjwtVersion")
+
+    // Querydsl: Spring Boot 3+ Jakarta EE 전환 후 :jakarta classifier 필수
+    implementation("com.querydsl:querydsl-jpa:$querydslVersion:jakarta")
+    kapt("com.querydsl:querydsl-apt:$querydslVersion:jakarta")
+
+    // Database
+    runtimeOnly("com.mysql:mysql-connector-j")
+    implementation("org.flywaydb:flyway-mysql")
+
+    // API Docs (Boot 4.x 대응 버전)
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.1")
+
+    // Dev
+    developmentOnly("org.springframework.boot:spring-boot-devtools")
+    annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
+
+    // Test
+    testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
+    testImplementation("org.springframework.boot:spring-boot-starter-security-test")
+    testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
+    testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
+    // mockk: Kotlin null-safety 보장 + 코루틴 지원 (Mockito 대비 이점)
+    testImplementation("io.mockk:mockk:1.14.2")
+    // springmockk: Spring 컨텍스트 내에서 @MockkBean 사용 가능하게 해주는 브릿지
+    testImplementation("com.ninja-squad:springmockk:4.0.2")
+    testImplementation("org.testcontainers:testcontainers-junit-jupiter")
+    testImplementation("org.testcontainers:testcontainers-mysql")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+kotlin {
+    compilerOptions {
+        freeCompilerArgs.addAll("-Xjsr305=strict", "-Xannotation-default-target=param-property")
+        jvmTarget = JvmTarget.JVM_21
+    }
+    // KAPT로 생성된 Q-class를 컴파일 소스셋에 등록
+    sourceSets.main {
+        kotlin.srcDir(layout.buildDirectory.dir("generated/source/kapt/main"))
+    }
+}
+
+// JPA Entity는 Kotlin final class 기본값으로 인해 프록시 생성 불가 → allOpen 적용 필수
+allOpen {
+    annotation("jakarta.persistence.Entity")
+    annotation("jakarta.persistence.MappedSuperclass")
+    annotation("jakarta.persistence.Embeddable")
+}
+
+tasks.withType<Test> {
+    useJUnitPlatform()
+}

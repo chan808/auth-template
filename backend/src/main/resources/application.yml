@@ -1,0 +1,47 @@
+spring:
+  profiles:
+    active: local
+
+  datasource:
+    # 환경변수 미설정 시 로컬 기본값 fallback: 실수로 운영 DB 연결 방지
+    url: ${DB_URL:jdbc:mysql://localhost:3306/auth_template?serverTimezone=Asia/Seoul&characterEncoding=utf8mb4&useSSL=false&allowPublicKeyRetrieval=true}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      # Flyway가 스키마를 단일 관리: validate로 ORM 기반 DDL 완전 차단
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+    show-sql: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+
+jwt:
+  # 운영 환경에서는 반드시 256비트 이상의 랜덤 시크릿으로 교체
+  secret: ${JWT_SECRET:this-is-a-local-dev-secret-must-be-changed-in-production}
+  # AT 30분: 탈취 시 피해 최소화 / RT 7일: 사용자 경험 vs 보안 균형점
+  access-token-expiry: 1800
+  refresh-token-expiry: 604800
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui
+
+server:
+  port: 8080
