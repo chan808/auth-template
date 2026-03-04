@@ -43,9 +43,6 @@ dependencies {
     runtimeOnly("io.jsonwebtoken:jjwt-impl:$jjwtVersion")
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:$jjwtVersion")
 
-    // Kotlin JDSL: 코드 생성 없이 KProperty 기반 타입 안전 동적 쿼리
-    implementation("com.linecorp.kotlin-jdsl:spring-data-jpa-boot4-support:3.8.0")
-
     // Database
     runtimeOnly("com.mysql:mysql-connector-j")
     implementation("org.flywaydb:flyway-mysql")
