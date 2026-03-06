@@ -1,15 +1,15 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useAuthStore } from "../stores/authStore";
 import { authApi } from "../api/authApi";
 import { LoginRequest } from "../types/auth";
 
 export function useAuth() {
   const router = useRouter();
-  const params = useParams();
-  const locale = (params.locale as string) || "ko";
-  const { accessToken, member, setAccessToken, clearAuth } = useAuthStore();
+  const locale = useLocale();
+  const { accessToken, setAccessToken, clearAuth } = useAuthStore();
 
   const login = async (data: LoginRequest) => {
     const res = await authApi.login(data);
@@ -25,7 +25,6 @@ export function useAuth() {
 
   return {
     isAuthenticated: !!accessToken,
-    member,
     login,
     logout,
   };

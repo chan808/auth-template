@@ -60,7 +60,12 @@ class AuthService(
             val session = refreshTokenStore.find(sid)
                 ?: throw AuthException(ErrorCode.REFRESH_TOKEN_NOT_FOUND)
 
-            if (session.tokenHash != hashToken(rtToken)) {
+            // MessageDigest.isEqual: 상수시간 비교로 timing attack 방지
+            if (!MessageDigest.isEqual(
+                    session.tokenHash.toByteArray(Charsets.UTF_8),
+                    hashToken(rtToken).toByteArray(Charsets.UTF_8),
+                )
+            ) {
                 // 해시 불일치: RT 탈취 후 재사용 가능성 → 세션 즉시 무효화 (토큰 로테이션 보안)
                 refreshTokenStore.delete(sid)
                 throw AuthException(ErrorCode.REFRESH_TOKEN_MISMATCH)
@@ -96,9 +101,12 @@ class AuthService(
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
     }
 
-    private fun parseSid(token: String): String =
-        token.substringBefore('.').takeIf { it.isNotBlank() }
-            ?: throw AuthException(ErrorCode.TOKEN_INVALID)
+    // dot이 없거나 맨 앞에 위치하면 유효하지 않은 RT 형식 — substringBefore만으로는 dot 부재 시 전체 문자열 반환
+    private fun parseSid(token: String): String {
+        val dotIndex = token.indexOf('.')
+        if (dotIndex <= 0) throw AuthException(ErrorCode.TOKEN_INVALID)
+        return token.substring(0, dotIndex)
+    }
 
     // SHA-256: RT 원문 대신 해시만 Redis에 저장 → Redis 유출 시 RT 재사용 불가
     private fun hashToken(token: String): String {

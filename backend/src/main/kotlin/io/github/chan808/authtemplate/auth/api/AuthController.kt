@@ -3,6 +3,7 @@ package io.github.chan808.authtemplate.auth.api
 import io.github.chan808.authtemplate.auth.service.AuthService
 import io.github.chan808.authtemplate.common.response.ApiResponse
 import jakarta.validation.Valid
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpHeaders
 import org.springframework.http.ResponseCookie
 import org.springframework.http.ResponseEntity
@@ -15,7 +16,11 @@ import org.springframework.web.bind.annotation.RestController
 
 @RestController
 @RequestMapping("/api/auth")
-class AuthController(private val authService: AuthService) {
+class AuthController(
+    private val authService: AuthService,
+    // 로컬 HTTP 개발 시 false — 운영 HTTPS에서는 COOKIE_SECURE=true 환경변수로 설정
+    @Value("\${cookie.secure:false}") private val cookieSecure: Boolean,
+) {
 
     @PostMapping("/login")
     fun login(
@@ -53,7 +58,7 @@ class AuthController(private val authService: AuthService) {
     private fun buildRtCookie(value: String, maxAge: Long): ResponseCookie =
         ResponseCookie.from(RT_COOKIE_NAME, value)
             .httpOnly(true)
-            .secure(true) // 로컬 개발 시 false로 변경 또는 HTTPS 환경 필요
+            .secure(cookieSecure)
             .sameSite("Strict")
             .path("/api/auth")
             .maxAge(maxAge)

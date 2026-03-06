@@ -24,7 +24,7 @@ class AuthTemplateApplicationTests {
 
         @Container
         @JvmField
-        val redis: GenericContainer<*> = GenericContainer("redis:7")
+        val redis: GenericContainer<*> = GenericContainer("redis:8-alpine")
             .withExposedPorts(6379)
 
         @DynamicPropertySource

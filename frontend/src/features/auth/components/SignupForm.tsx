@@ -1,11 +1,12 @@
 "use client";
 
-import { useTranslations } from "next-intl";
-import { useParams, useRouter } from "next/navigation";
+import { useTranslations, useLocale } from "next-intl";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import type { AxiosError } from "axios";
 import { memberApi } from "@/features/member/api/memberApi";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
@@ -33,8 +34,7 @@ type FormData = z.infer<typeof schema>;
 
 export default function SignupForm() {
   const t = useTranslations("auth.signup");
-  const params = useParams();
-  const locale = (params.locale as string) || "ko";
+  const locale = useLocale();
   const router = useRouter();
 
   const form = useForm<FormData>({
@@ -46,8 +46,12 @@ export default function SignupForm() {
     try {
       await memberApi.signup(data);
       router.push(`/${locale}/login`);
-    } catch {
-      form.setError("root", { message: "회원가입에 실패했습니다." });
+    } catch (error) {
+      // ProblemDetail(RFC 7807) 응답 구조: { detail: "..." }
+      const axiosError = error as AxiosError<{ detail?: string }>;
+      const message =
+        axiosError.response?.data?.detail ?? "회원가입에 실패했습니다.";
+      form.setError("root", { message });
     }
   };
 

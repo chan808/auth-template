@@ -1,7 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
-import { useParams } from "next/navigation";
+import { useTranslations, useLocale } from "next-intl";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -33,8 +32,7 @@ type FormData = z.infer<typeof schema>;
 
 export default function LoginForm() {
   const t = useTranslations("auth.login");
-  const params = useParams();
-  const locale = (params.locale as string) || "ko";
+  const locale = useLocale();
   const { login } = useAuth();
 
   const form = useForm<FormData>({

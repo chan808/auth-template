@@ -5,9 +5,10 @@ spring:
   datasource:
     # 환경변수 미설정 시 로컬 기본값 fallback: 실수로 운영 DB 연결 방지
     # characterEncoding: Java charset 이름(UTF-8) 사용 — utf8mb4는 MySQL 내부 이름으로 JDBC에서 미지원
-    url: ${DB_URL:jdbc:mysql://localhost:3306/auth_template?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true}
-    username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:}
+    url: ${DB_URL:jdbc:mysql://localhost:3306/authtemplate?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true}
+    # .env의 MYSQL_USER(user_chan) 사용 — root 계정은 운영 DB 접속에 사용하지 않는 것을 권장
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:root_pass}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
@@ -28,7 +29,7 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
+      password: ${REDIS_PASSWORD:redis_pass}
       timeout: 2000ms
 
 jwt:
@@ -37,6 +38,13 @@ jwt:
   # AT 30분: 탈취 시 피해 최소화 / RT 7일: 사용자 경험 vs 보안 균형점
   access-token-expiry: 1800
   refresh-token-expiry: 604800
+
+# 로컬 HTTP 개발 환경 기본값 — 운영 시 각 환경변수로 오버라이드
+cookie:
+  secure: false # HTTPS 운영 환경에서는 COOKIE_SECURE=true
+
+cors:
+  allowed-origin: ${CORS_ALLOWED_ORIGIN:http://localhost:3000}
 
 springdoc:
   api-docs:

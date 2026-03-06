@@ -3,6 +3,7 @@ package io.github.chan808.authtemplate.common.config
 import io.github.chan808.authtemplate.common.security.JwtAuthenticationFilter
 import io.github.chan808.authtemplate.common.security.JwtProvider
 import io.github.chan808.authtemplate.common.security.SecurityExceptionHandler
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpMethod
@@ -14,6 +15,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
+import org.springframework.web.cors.CorsConfiguration
+import org.springframework.web.cors.CorsConfigurationSource
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 
 @Configuration
 @EnableWebSecurity
@@ -21,9 +25,13 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 class SecurityConfig(
     private val jwtProvider: JwtProvider,
     private val securityExceptionHandler: SecurityExceptionHandler,
+    // 운영 환경에서는 CORS_ALLOWED_ORIGIN 환경변수로 실제 도메인 지정
+    @Value("\${cors.allowed-origin:http://localhost:3000}") private val allowedOrigin: String,
 ) {
     @Bean
     fun filterChain(http: HttpSecurity): SecurityFilterChain = http
+        // CORS: Spring Security 필터보다 먼저 적용되도록 여기서 설정 (WebMvcConfigurer 단독으로는 부족)
+        .cors { it.configurationSource(corsConfigurationSource()) }
         // JWT stateless: CSRF 불필요. RT 쿠키 엔드포인트는 SameSite=Strict + 커스텀 헤더로 보완
         .csrf { it.disable() }
         .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
@@ -39,6 +47,23 @@ class SecurityConfig(
             it.accessDeniedHandler(securityExceptionHandler)
         }
         .build()
+
+    @Bean
+    fun corsConfigurationSource(): CorsConfigurationSource {
+        val config = CorsConfiguration()
+        // allowedOrigins: 와일드카드 불가 — allowedOriginPatterns + credentials 조합은 보안 위험
+        config.allowedOrigins = listOf(allowedOrigin)
+        config.allowedMethods = listOf("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+        // X-CSRF-GUARD: reissue/logout의 CSRF 이중 방어용 커스텀 헤더
+        config.allowedHeaders = listOf("Authorization", "Content-Type", "X-CSRF-GUARD")
+        // withCredentials: true 대응 — RT HttpOnly 쿠키 자동 전송 허용
+        config.allowCredentials = true
+        // preflight 캐시 1시간: OPTIONS 사전 요청 빈도 절감
+        config.maxAge = 3600L
+        return UrlBasedCorsConfigurationSource().also {
+            it.registerCorsConfiguration("/**", config)
+        }
+    }
 
     @Bean
     // BCrypt work factor 기본값(10): 인증 서버 부하와 보안 강도 균형 → 운영 환경 요건에 따라 조정
