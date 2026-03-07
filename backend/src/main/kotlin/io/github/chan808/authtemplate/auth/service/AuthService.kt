@@ -21,11 +21,13 @@ class AuthService(
     private val passwordEncoder: PasswordEncoder,
     private val jwtProvider: JwtProvider,
     private val refreshTokenStore: RefreshTokenStore,
+    private val loginRateLimitService: LoginRateLimitService,
 ) {
     private val secureRandom = SecureRandom()
 
-    fun login(request: LoginRequest): Pair<String, String> {
+    fun login(request: LoginRequest, ip: String): Pair<String, String> {
         val email = request.email.lowercase().trim()
+        loginRateLimitService.check(ip, email)
         val member = memberRepository.findByEmail(email)
             ?: throw AuthException(ErrorCode.INVALID_CREDENTIALS)
 

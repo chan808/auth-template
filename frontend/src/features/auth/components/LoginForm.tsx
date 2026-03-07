@@ -45,6 +45,7 @@ export default function LoginForm() {
       await login(data);
     } catch {
       form.setError("root", { message: t("errorMessage") });
+      form.resetField("password");
     }
   };
 

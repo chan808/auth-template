@@ -15,9 +15,11 @@ import org.springframework.transaction.annotation.Transactional
 class MemberService(
     private val memberRepository: MemberRepository,
     private val passwordEncoder: PasswordEncoder,
+    private val signupRateLimitService: SignupRateLimitService,
 ) {
     @Transactional
-    fun signup(request: SignupRequest): MemberResponse {
+    fun signup(request: SignupRequest, ip: String): MemberResponse {
+        signupRateLimitService.check(ip)
         val email = request.email.lowercase().trim()
 
         if (memberRepository.existsByEmail(email)) {

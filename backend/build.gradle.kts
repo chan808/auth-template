@@ -1,3 +1,4 @@
+import org.gradle.kotlin.dsl.implementation
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -45,6 +46,7 @@ dependencies {
 
     // Database
     runtimeOnly("com.mysql:mysql-connector-j")
+    implementation("org.flywaydb:flyway-core")
     implementation("org.flywaydb:flyway-mysql")
 
     // API Docs (Boot 4.x 대응 버전)

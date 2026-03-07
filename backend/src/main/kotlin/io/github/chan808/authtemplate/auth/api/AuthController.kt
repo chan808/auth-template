@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpHeaders
 import org.springframework.http.ResponseCookie
 import org.springframework.http.ResponseEntity
+import jakarta.servlet.http.HttpServletRequest
 import org.springframework.web.bind.annotation.CookieValue
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -25,9 +26,10 @@ class AuthController(
     @PostMapping("/login")
     fun login(
         @RequestBody @Valid request: LoginRequest,
+        servletRequest: HttpServletRequest,
         response: jakarta.servlet.http.HttpServletResponse,
     ): ResponseEntity<ApiResponse<TokenResponse>> {
-        val (at, rt) = authService.login(request)
+        val (at, rt) = authService.login(request, servletRequest.clientIp())
         response.addHeader(HttpHeaders.SET_COOKIE, buildRtCookie(rt, RT_TTL).toString())
         return ResponseEntity.ok(ApiResponse.of(TokenResponse(at)))
     }
@@ -69,3 +71,8 @@ class AuthController(
         private const val RT_TTL = 7L * 24 * 3600
     }
 }
+
+// X-Forwarded-For: 역방향 프록시(nginx 등) 뒤에서 실제 클라이언트 IP 추출
+// 운영 환경에서는 nginx가 신뢰된 헤더만 전달하도록 설정 필요 (헤더 스푸핑 방지)
+private fun HttpServletRequest.clientIp(): String =
+    getHeader("X-Forwarded-For")?.split(",")?.first()?.trim() ?: remoteAddr
