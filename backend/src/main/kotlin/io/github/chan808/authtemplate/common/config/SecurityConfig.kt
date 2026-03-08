@@ -15,6 +15,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.CorsConfigurationSource
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
@@ -27,6 +28,7 @@ class SecurityConfig(
     private val securityExceptionHandler: SecurityExceptionHandler,
     // 운영 환경에서는 CORS_ALLOWED_ORIGIN 환경변수로 실제 도메인 지정
     @Value("\${cors.allowed-origin:http://localhost:3000}") private val allowedOrigin: String,
+    @Value("\${cookie.secure:false}") private val cookieSecure: Boolean,
 ) {
     @Bean
     fun filterChain(http: HttpSecurity): SecurityFilterChain = http
@@ -35,6 +37,17 @@ class SecurityConfig(
         // JWT stateless: CSRF 불필요. RT 쿠키 엔드포인트는 SameSite=Strict + 커스텀 헤더로 보완
         .csrf { it.disable() }
         .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
+        .headers { headers ->
+            // HSTS: 운영 HTTPS 환경에서만 활성화 (cookieSecure = true)
+            // 로컬 HTTP에서 적용 시 브라우저가 localhost를 HTTPS로 강제해 개발 환경 접속 불가
+            if (cookieSecure) {
+                headers.httpStrictTransportSecurity { it.maxAgeInSeconds(31536000).includeSubDomains(true) }
+            } else {
+                headers.httpStrictTransportSecurity { it.disable() }
+            }
+            // Referrer-Policy: API 응답에 Referer 헤더 미포함 → 내부 URL 유출 방지
+            headers.referrerPolicy { it.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER) }
+        }
         .authorizeHttpRequests {
             it.requestMatchers("/api/auth/**").permitAll()
             it.requestMatchers(HttpMethod.POST, "/api/members").permitAll() // 회원가입

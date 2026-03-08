@@ -15,6 +15,15 @@ import java.net.URI
 @RestControllerAdvice
 class GlobalExceptionHandler {
 
+    // RateLimitException을 BusinessException보다 먼저 등록해 Retry-After 헤더가 누락되지 않도록 함
+    @ExceptionHandler(RateLimitException::class)
+    fun handleRateLimit(ex: RateLimitException, request: HttpServletRequest): ResponseEntity<ProblemDetail> {
+        val detail = buildProblemDetail(ex.errorCode, ex.message, request.requestURI)
+        return ResponseEntity.status(ex.errorCode.httpStatus)
+            .header("Retry-After", ex.retryAfterSeconds.toString())
+            .body(detail)
+    }
+
     @ExceptionHandler(BusinessException::class)
     fun handleBusinessException(ex: BusinessException, request: HttpServletRequest): ResponseEntity<ProblemDetail> {
         val detail = buildProblemDetail(ex.errorCode, ex.message, request.requestURI)

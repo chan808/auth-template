@@ -24,6 +24,8 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+    baseline-on-migrate: true
+    baseline-version: 1
 
   data:
     redis:
@@ -31,6 +33,18 @@ spring:
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:redis_pass}
       timeout: 2000ms
+
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 
 jwt:
   # 운영 환경에서는 반드시 256비트 이상의 랜덤 시크릿으로 교체
@@ -46,11 +60,22 @@ cookie:
 cors:
   allowed-origin: ${CORS_ALLOWED_ORIGIN:http://localhost:3000}
 
+app:
+  # 이메일 인증/비밀번호 재설정 링크의 base URL — 운영 시 APP_BASE_URL 환경변수로 오버라이드
+  base-url: ${APP_BASE_URL:http://localhost:3000}
+  mail:
+    from: ${MAIL_FROM:noreply@example.com}
+  # BreachedPasswordChecker: 비밀번호에 서비스 이름 포함 금지 시 사용
+  name: ${APP_NAME:auth-template}
+
 springdoc:
   api-docs:
     path: /api-docs
+    # 운영 환경에서는 SWAGGER_ENABLED=false(기본값)로 API 명세 비노출 — 공격 표면 최소화
+    enabled: ${SWAGGER_ENABLED:false}
   swagger-ui:
     path: /swagger-ui
+    enabled: ${SWAGGER_ENABLED:false}
 
 server:
   port: 8080

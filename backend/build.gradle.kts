@@ -52,6 +52,9 @@ dependencies {
     // API Docs (Boot 4.x 대응 버전)
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.1")
 
+    // Mail
+    implementation("org.springframework.boot:spring-boot-starter-mail")
+
     // Dev
     developmentOnly("org.springframework.boot:spring-boot-devtools")
     annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")

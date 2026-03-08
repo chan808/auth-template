@@ -17,7 +17,33 @@
       "passwordHint": "At least 8 characters.",
       "submitButton": "Sign Up",
       "loginLink": "Already have an account? Sign In",
-      "successMessage": "Account created. Please sign in."
+      "successMessage": "Account created. Please sign in.",
+      "verifyTitle": "Check your email",
+      "verifyDescription": "We sent you a verification link. Please check your inbox and click the link."
+    },
+    "resetPassword": {
+      "title": "Reset Password",
+      "newPasswordLabel": "New Password",
+      "confirmPasswordLabel": "Confirm Password",
+      "submitButton": "Change Password",
+      "errorMessage": "Failed to reset password.",
+      "invalidTitle": "Invalid Link",
+      "invalidDescription": "The password reset link has expired or is invalid."
+    },
+    "verifyEmail": {
+      "loading": {
+        "title": "Verifying...",
+        "description": "Please wait a moment."
+      },
+      "success": {
+        "title": "Email Verified",
+        "description": "Your email has been successfully verified.",
+        "action": "Go to Sign In"
+      },
+      "error": {
+        "title": "Verification Failed",
+        "description": "The verification link is invalid or has expired."
+      }
     }
   }
 }

@@ -16,4 +16,16 @@ export const authApi = {
     api.post<ApiResponse<void>>("/api/auth/logout", null, {
       headers: { "X-CSRF-GUARD": "1" },
     }),
+
+  verifyEmail: (token: string) =>
+    api.get<ApiResponse<void>>(`/api/auth/verify-email?token=${token}`),
+
+  requestPasswordReset: (email: string) =>
+    api.post<ApiResponse<void>>("/api/auth/password-reset/request", { email }),
+
+  confirmPasswordReset: (token: string, newPassword: string) =>
+    api.post<ApiResponse<void>>("/api/auth/password-reset/confirm", {
+      token,
+      newPassword,
+    }),
 };

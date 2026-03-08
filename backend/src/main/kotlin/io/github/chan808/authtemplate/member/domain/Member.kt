@@ -19,6 +19,9 @@ class Member(
     @Column(nullable = false)
     var password: String,
 
+    @Column(nullable = false)
+    var emailVerified: Boolean = false,
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     val role: MemberRole = MemberRole.USER,

@@ -1,24 +1,30 @@
 package io.github.chan808.authtemplate.auth.api
 
 import io.github.chan808.authtemplate.auth.service.AuthService
+import io.github.chan808.authtemplate.auth.service.PasswordResetService
 import io.github.chan808.authtemplate.common.response.ApiResponse
+import io.github.chan808.authtemplate.member.service.EmailVerificationService
+import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpHeaders
 import org.springframework.http.ResponseCookie
 import org.springframework.http.ResponseEntity
-import jakarta.servlet.http.HttpServletRequest
 import org.springframework.web.bind.annotation.CookieValue
+import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
 @RequestMapping("/api/auth")
 class AuthController(
     private val authService: AuthService,
+    private val emailVerificationService: EmailVerificationService,
+    private val passwordResetService: PasswordResetService,
     // 로컬 HTTP 개발 시 false — 운영 HTTPS에서는 COOKIE_SECURE=true 환경변수로 설정
     @Value("\${cookie.secure:false}") private val cookieSecure: Boolean,
 ) {
@@ -54,6 +60,29 @@ class AuthController(
     ): ResponseEntity<ApiResponse<Unit>> {
         authService.logout(rtToken)
         response.addHeader(HttpHeaders.SET_COOKIE, buildRtCookie("", 0).toString())
+        return ResponseEntity.ok(ApiResponse.success())
+    }
+
+    @GetMapping("/verify-email")
+    fun verifyEmail(@RequestParam token: String): ResponseEntity<ApiResponse<Unit>> {
+        emailVerificationService.verify(token)
+        return ResponseEntity.ok(ApiResponse.success())
+    }
+
+    // 이메일 존재 여부와 무관하게 200 반환 → enumeration attack 방지
+    @PostMapping("/password-reset/request")
+    fun requestPasswordReset(
+        @RequestBody @Valid request: PasswordResetRequest,
+    ): ResponseEntity<ApiResponse<Unit>> {
+        passwordResetService.requestReset(request.email)
+        return ResponseEntity.ok(ApiResponse.success())
+    }
+
+    @PostMapping("/password-reset/confirm")
+    fun confirmPasswordReset(
+        @RequestBody @Valid request: PasswordResetConfirmRequest,
+    ): ResponseEntity<ApiResponse<Unit>> {
+        passwordResetService.confirmReset(request.token, request.newPassword)
         return ResponseEntity.ok(ApiResponse.success())
     }
 

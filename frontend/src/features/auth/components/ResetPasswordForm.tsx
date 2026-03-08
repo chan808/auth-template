@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import type { AxiosError } from "axios";
-import { memberApi } from "@/features/member/api/memberApi";
+import { authApi } from "@/features/auth/api/authApi";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import {
@@ -25,45 +26,56 @@ import {
   CardTitle,
 } from "@/shared/components/ui/card";
 
-const schema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8),
-});
+const schema = z
+  .object({
+    newPassword: z.string().min(8),
+    confirmPassword: z.string(),
+  })
+  .refine((d) => d.newPassword === d.confirmPassword, {
+    path: ["confirmPassword"],
+    message: "비밀번호가 일치하지 않습니다.",
+  });
 
 type FormData = z.infer<typeof schema>;
 
-export default function SignupForm() {
-  const t = useTranslations("auth.signup");
+export default function ResetPasswordForm() {
+  const t = useTranslations("auth.resetPassword");
   const locale = useLocale();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token");
+
+  const [tokenValid, setTokenValid] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    setTokenValid(!!token);
+  }, [token]);
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { newPassword: "", confirmPassword: "" },
   });
 
-  const [submitted, setSubmitted] = useState(false);
-
   const onSubmit = async (data: FormData) => {
+    if (!token) return;
     try {
-      await memberApi.signup(data);
-      setSubmitted(true);
+      await authApi.confirmPasswordReset(token, data.newPassword);
+      router.push(`/${locale}/login?reset=success`);
     } catch (error) {
-      // ProblemDetail(RFC 7807) 응답 구조: { detail: "..." }
-      const axiosError = error as AxiosError<{ detail?: string }>;
-      const message =
-        axiosError.response?.data?.detail ?? "회원가입에 실패했습니다.";
-      form.setError("root", { message });
+      const detail = (error as AxiosError<{ detail?: string }>).response?.data
+        ?.detail;
+      form.setError("root", { message: detail ?? t("errorMessage") });
     }
   };
 
-  if (submitted) {
+  if (tokenValid === false) {
     return (
       <Card className="w-full max-w-md text-center">
         <CardHeader>
-          <CardTitle className="text-2xl">{t("verifyTitle")}</CardTitle>
+          <CardTitle className="text-2xl">{t("invalidTitle")}</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-muted-foreground">{t("verifyDescription")}</p>
+        <CardContent>
+          <p className="text-muted-foreground">{t("invalidDescription")}</p>
         </CardContent>
       </Card>
     );
@@ -79,16 +91,12 @@ export default function SignupForm() {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
-              name="email"
+              name="newPassword"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t("emailLabel")}</FormLabel>
+                  <FormLabel>{t("newPasswordLabel")}</FormLabel>
                   <FormControl>
-                    <Input
-                      type="email"
-                      placeholder={t("emailPlaceholder")}
-                      {...field}
-                    />
+                    <Input type="password" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -96,10 +104,10 @@ export default function SignupForm() {
             />
             <FormField
               control={form.control}
-              name="password"
+              name="confirmPassword"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t("passwordLabel")}</FormLabel>
+                  <FormLabel>{t("confirmPasswordLabel")}</FormLabel>
                   <FormControl>
                     <Input type="password" {...field} />
                   </FormControl>
@@ -119,14 +127,6 @@ export default function SignupForm() {
             >
               {t("submitButton")}
             </Button>
-            <p className="text-center text-sm text-muted-foreground">
-              <Link
-                href={`/${locale}/login`}
-                className="hover:underline hover:text-foreground"
-              >
-                {t("loginLink")}
-              </Link>
-            </p>
           </form>
         </Form>
       </CardContent>

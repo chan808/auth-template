@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -28,6 +29,15 @@ class MemberController(private val memberService: MemberService) {
     @GetMapping("/me")
     fun getMyInfo(@AuthenticationPrincipal memberId: Long): ResponseEntity<ApiResponse<MemberResponse>> =
         ResponseEntity.ok(ApiResponse.of(memberService.getMyInfo(memberId)))
+
+    @PatchMapping("/me/password")
+    fun changePassword(
+        @RequestBody @Valid request: ChangePasswordRequest,
+        @AuthenticationPrincipal memberId: Long,
+    ): ResponseEntity<ApiResponse<Unit>> {
+        memberService.changePassword(memberId, request)
+        return ResponseEntity.ok(ApiResponse.success())
+    }
 }
 
 // X-Forwarded-For: 역방향 프록시(nginx 등) 뒤에서 실제 클라이언트 IP 추출

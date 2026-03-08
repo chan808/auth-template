@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import type { AxiosError } from "axios";
 import { useAuth } from "../hooks/useAuth";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
@@ -43,8 +44,11 @@ export default function LoginForm() {
   const onSubmit = async (data: FormData) => {
     try {
       await login(data);
-    } catch {
-      form.setError("root", { message: t("errorMessage") });
+    } catch (error) {
+      const detail = (error as AxiosError<{ detail?: string }>).response?.data
+        ?.detail;
+      // 미인증 계정은 백엔드 detail 메시지를 그대로 노출
+      form.setError("root", { message: detail ?? t("errorMessage") });
       form.resetField("password");
     }
   };

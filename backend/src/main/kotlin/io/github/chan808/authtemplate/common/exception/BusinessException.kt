@@ -18,3 +18,6 @@ class MemberException(
     message: String = errorCode.message,
     cause: Throwable? = null,
 ) : BusinessException(errorCode, message, cause)
+
+// Retry-After(초)를 담아 GlobalExceptionHandler에서 응답 헤더로 노출
+class RateLimitException(val retryAfterSeconds: Long) : BusinessException(ErrorCode.TOO_MANY_REQUESTS)

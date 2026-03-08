@@ -5,8 +5,10 @@ import io.github.chan808.authtemplate.auth.domain.RefreshTokenSession
 import io.github.chan808.authtemplate.auth.repository.RefreshTokenStore
 import io.github.chan808.authtemplate.common.exception.AuthException
 import io.github.chan808.authtemplate.common.exception.ErrorCode
+import io.github.chan808.authtemplate.common.logging.maskEmail
 import io.github.chan808.authtemplate.common.security.JwtProvider
 import io.github.chan808.authtemplate.member.repository.MemberRepository
+import org.slf4j.LoggerFactory
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import java.security.MessageDigest
@@ -23,17 +25,28 @@ class AuthService(
     private val refreshTokenStore: RefreshTokenStore,
     private val loginRateLimitService: LoginRateLimitService,
 ) {
+    private val log = LoggerFactory.getLogger(AuthService::class.java)
     private val secureRandom = SecureRandom()
 
     fun login(request: LoginRequest, ip: String): Pair<String, String> {
         val email = request.email.lowercase().trim()
         loginRateLimitService.check(ip, email)
-        val member = memberRepository.findByEmail(email)
-            ?: throw AuthException(ErrorCode.INVALID_CREDENTIALS)
+
+        val member = memberRepository.findByEmail(email) ?: run {
+            log.warn("[AUTH] 인증 실패 email={} reason=EMAIL_NOT_FOUND", maskEmail(email))
+            throw AuthException(ErrorCode.INVALID_CREDENTIALS)
+        }
 
         // 이메일 존재 여부와 비밀번호 오류를 같은 예외로 처리 → 계정 열거 공격(enumeration attack) 방지
         if (!passwordEncoder.matches(request.password, member.password)) {
+            log.warn("[AUTH] 인증 실패 email={} reason=INVALID_PASSWORD", maskEmail(email))
             throw AuthException(ErrorCode.INVALID_CREDENTIALS)
+        }
+
+        // NIST SP 800-63B 6.1.2: 이메일 인증 전 로그인 차단
+        if (!member.emailVerified) {
+            log.warn("[AUTH] 인증 실패 email={} reason=EMAIL_NOT_VERIFIED", maskEmail(email))
+            throw AuthException(ErrorCode.EMAIL_NOT_VERIFIED)
         }
 
         val (sid, rt) = generateRefreshToken()
@@ -47,6 +60,8 @@ class AuthService(
             ),
             ttlSeconds = 7L * 24 * 3600, // sliding window: 재발급 시마다 TTL 갱신
         )
+        // 비밀번호 변경/재설정 시 전체 세션 일괄 무효화를 위해 회원별 세션 세트에 등록
+        refreshTokenStore.addSession(member.id, sid)
 
         return jwtProvider.generateAccessToken(member.id, member.role.name) to rt
     }
@@ -70,6 +85,7 @@ class AuthService(
             ) {
                 // 해시 불일치: RT 탈취 후 재사용 가능성 → 세션 즉시 무효화 (토큰 로테이션 보안)
                 refreshTokenStore.delete(sid)
+                log.error("[SECURITY] RT 해시 불일치 감지 - 토큰 탈취 의심 sid={}", sid)
                 throw AuthException(ErrorCode.REFRESH_TOKEN_MISMATCH)
             }
 

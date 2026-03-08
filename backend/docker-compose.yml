@@ -1,7 +1,7 @@
 services:
   mysql:
     image: mysql:8.4
-    container_name: auth-mysql
+    container_name: mysql
     restart: always
     env_file:
       - .env

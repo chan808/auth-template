@@ -17,7 +17,33 @@
       "passwordHint": "8자 이상 입력해주세요.",
       "submitButton": "회원가입",
       "loginLink": "이미 계정이 있으신가요? 로그인",
-      "successMessage": "회원가입이 완료되었습니다. 로그인해주세요."
+      "successMessage": "회원가입이 완료되었습니다. 로그인해주세요.",
+      "verifyTitle": "이메일을 확인해주세요",
+      "verifyDescription": "인증 링크를 발송했습니다. 받은 편지함을 확인한 뒤 링크를 클릭해주세요."
+    },
+    "resetPassword": {
+      "title": "비밀번호 재설정",
+      "newPasswordLabel": "새 비밀번호",
+      "confirmPasswordLabel": "비밀번호 확인",
+      "submitButton": "비밀번호 변경",
+      "errorMessage": "비밀번호 재설정에 실패했습니다.",
+      "invalidTitle": "유효하지 않은 링크",
+      "invalidDescription": "비밀번호 재설정 링크가 만료되었거나 올바르지 않습니다."
+    },
+    "verifyEmail": {
+      "loading": {
+        "title": "인증 중...",
+        "description": "잠시만 기다려주세요."
+      },
+      "success": {
+        "title": "인증 완료",
+        "description": "이메일 인증이 완료되었습니다.",
+        "action": "로그인하러 가기"
+      },
+      "error": {
+        "title": "인증 실패",
+        "description": "인증 링크가 유효하지 않거나 만료되었습니다."
+      }
     }
   }
 }
