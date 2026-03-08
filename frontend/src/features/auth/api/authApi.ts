@@ -20,6 +20,10 @@ export const authApi = {
   verifyEmail: (token: string) =>
     api.get<ApiResponse<void>>(`/api/auth/verify-email?token=${token}`),
 
+  /** OAuth 로그인 후 one-time code를 AT로 교환 */
+  exchangeOAuthCode: (code: string) =>
+    api.get<ApiResponse<{ accessToken: string }>>(`/api/auth/oauth2/token?code=${code}`),
+
   requestPasswordReset: (email: string) =>
     api.post<ApiResponse<void>>("/api/auth/password-reset/request", { email }),
 

@@ -42,6 +42,10 @@
       "invalidTitle": "유효하지 않은 링크",
       "invalidDescription": "비밀번호 재설정 링크가 만료되었거나 올바르지 않습니다."
     },
+    "social": {
+      "divider": "또는",
+      "loginWith": "{provider}로 로그인"
+    },
     "verifyEmail": {
       "loading": {
         "title": "인증 중...",
