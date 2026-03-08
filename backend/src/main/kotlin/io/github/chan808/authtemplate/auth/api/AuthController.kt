@@ -1,7 +1,10 @@
 package io.github.chan808.authtemplate.auth.api
 
+import io.github.chan808.authtemplate.auth.repository.OAuthCodeStore
 import io.github.chan808.authtemplate.auth.service.AuthService
 import io.github.chan808.authtemplate.auth.service.PasswordResetService
+import io.github.chan808.authtemplate.common.exception.AuthException
+import io.github.chan808.authtemplate.common.exception.ErrorCode
 import io.github.chan808.authtemplate.common.response.ApiResponse
 import io.github.chan808.authtemplate.member.service.EmailVerificationService
 import jakarta.servlet.http.HttpServletRequest
@@ -25,6 +28,7 @@ class AuthController(
     private val authService: AuthService,
     private val emailVerificationService: EmailVerificationService,
     private val passwordResetService: PasswordResetService,
+    private val oAuthCodeStore: OAuthCodeStore,
     // 로컬 HTTP 개발 시 false — 운영 HTTPS에서는 COOKIE_SECURE=true 환경변수로 설정
     @Value("\${cookie.secure:false}") private val cookieSecure: Boolean,
 ) {
@@ -76,6 +80,14 @@ class AuthController(
     ): ResponseEntity<ApiResponse<Unit>> {
         passwordResetService.requestReset(request.email)
         return ResponseEntity.ok(ApiResponse.success())
+    }
+
+    /** OAuth 로그인 후 AT를 one-time code로 교환 (AT를 URL에 직접 노출하지 않기 위함) */
+    @GetMapping("/oauth2/token")
+    fun exchangeOAuthCode(@RequestParam code: String): ResponseEntity<ApiResponse<TokenResponse>> {
+        val accessToken = oAuthCodeStore.findAndDelete(code)
+            ?: throw AuthException(ErrorCode.OAUTH_CODE_NOT_FOUND)
+        return ResponseEntity.ok(ApiResponse.of(TokenResponse(accessToken)))
     }
 
     @PostMapping("/password-reset/confirm")

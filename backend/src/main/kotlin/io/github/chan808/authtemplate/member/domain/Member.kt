@@ -16,18 +16,28 @@ class Member(
     @Column(nullable = false, unique = true)
     val email: String,
 
-    @Column(nullable = false)
-    var password: String,
+    // OAuth 계정은 비밀번호 없음 → nullable
+    @Column(nullable = true)
+    var password: String? = null,
 
     @Column(nullable = false)
     var emailVerified: Boolean = false,
+
+    // OAuth 제공자 (GOOGLE/NAVER/KAKAO). 로컬 계정은 null
+    @Column(nullable = true, length = 20)
+    val provider: String? = null,
+
+    // OAuth 제공자의 고유 사용자 ID. 로컬 계정은 null
+    @Column(name = "provider_id", nullable = true)
+    val providerId: String? = null,
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     val role: MemberRole = MemberRole.USER,
 
-    // id = 0L: Kotlin nullable 회피, isNew() 판단은 id == 0L 여부로 처리
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0L,
-) : BaseEntity()
+) : BaseEntity() {
+    val isOAuthAccount: Boolean get() = provider != null
+}
