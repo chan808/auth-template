@@ -40,7 +40,7 @@ class PasswordResetService(
         val member = memberRepository.findById(memberId)
             .orElseThrow { AuthException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID) }
         breachedPasswordChecker.check(newPassword, member.email)
-        member.password = passwordEncoder.encode(newPassword) ?: error("PasswordEncoder returned null")
+        member.changePassword(passwordEncoder.encode(newPassword) ?: error("PasswordEncoder returned null"))
         passwordResetStore.delete(token)
         // 비밀번호 변경 후 모든 기존 세션 무효화 → 탈취된 세션 강제 로그아웃
         refreshTokenStore.deleteAllSessionsForMember(memberId)

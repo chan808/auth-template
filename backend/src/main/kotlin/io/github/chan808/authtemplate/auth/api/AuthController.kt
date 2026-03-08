@@ -6,6 +6,7 @@ import io.github.chan808.authtemplate.auth.service.PasswordResetService
 import io.github.chan808.authtemplate.common.exception.AuthException
 import io.github.chan808.authtemplate.common.exception.ErrorCode
 import io.github.chan808.authtemplate.common.response.ApiResponse
+import io.github.chan808.authtemplate.common.web.clientIp
 import io.github.chan808.authtemplate.member.service.EmailVerificationService
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
@@ -31,6 +32,8 @@ class AuthController(
     private val oAuthCodeStore: OAuthCodeStore,
     // 로컬 HTTP 개발 시 false — 운영 HTTPS에서는 COOKIE_SECURE=true 환경변수로 설정
     @Value("\${cookie.secure:false}") private val cookieSecure: Boolean,
+    // RT 쿠키 Max-Age: application.yml의 jwt.refresh-token-expiry와 단일 출처로 동기화
+    @Value("\${jwt.refresh-token-expiry}") private val rtTtl: Long,
 ) {
 
     @PostMapping("/login")
@@ -40,7 +43,7 @@ class AuthController(
         response: jakarta.servlet.http.HttpServletResponse,
     ): ResponseEntity<ApiResponse<TokenResponse>> {
         val (at, rt) = authService.login(request, servletRequest.clientIp())
-        response.addHeader(HttpHeaders.SET_COOKIE, buildRtCookie(rt, RT_TTL).toString())
+        response.addHeader(HttpHeaders.SET_COOKIE, buildRtCookie(rt, rtTtl).toString())
         return ResponseEntity.ok(ApiResponse.of(TokenResponse(at)))
     }
 
@@ -52,7 +55,7 @@ class AuthController(
         response: jakarta.servlet.http.HttpServletResponse,
     ): ResponseEntity<ApiResponse<TokenResponse>> {
         val (at, newRt) = authService.reissue(rtToken)
-        response.addHeader(HttpHeaders.SET_COOKIE, buildRtCookie(newRt, RT_TTL).toString())
+        response.addHeader(HttpHeaders.SET_COOKIE, buildRtCookie(newRt, rtTtl).toString())
         return ResponseEntity.ok(ApiResponse.of(TokenResponse(at)))
     }
 
@@ -109,11 +112,5 @@ class AuthController(
 
     companion object {
         private const val RT_COOKIE_NAME = "refresh_token"
-        private const val RT_TTL = 7L * 24 * 3600
     }
 }
-
-// X-Forwarded-For: 역방향 프록시(nginx 등) 뒤에서 실제 클라이언트 IP 추출
-// 운영 환경에서는 nginx가 신뢰된 헤더만 전달하도록 설정 필요 (헤더 스푸핑 방지)
-private fun HttpServletRequest.clientIp(): String =
-    getHeader("X-Forwarded-For")?.split(",")?.first()?.trim() ?: remoteAddr

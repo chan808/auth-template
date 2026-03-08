@@ -47,4 +47,8 @@ class Member(
     fun updateProfile(nickname: String?) {
         this.nickname = nickname?.trim()?.ifBlank { null }
     }
+
+    fun changePassword(encodedPassword: String) {
+        this.password = encodedPassword
+    }
 }
