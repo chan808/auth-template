@@ -8,6 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import type { AxiosError } from "axios";
 import { useAuth } from "../hooks/useAuth";
+import SocialLoginButtons from "./SocialLoginButtons";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import {
@@ -37,6 +38,7 @@ export default function LoginForm() {
   const locale = useLocale();
   const searchParams = useSearchParams();
   const resetSuccess = searchParams.get("reset") === "success";
+  const oauthError = searchParams.get("error");
   const { login } = useAuth();
 
   const form = useForm<FormData>({
@@ -97,6 +99,9 @@ export default function LoginForm() {
             {resetSuccess && (
               <p className="text-sm text-green-600">{t("resetSuccessMessage")}</p>
             )}
+            {oauthError && (
+              <p className="text-sm text-destructive">{decodeURIComponent(oauthError)}</p>
+            )}
             {form.formState.errors.root && (
               <p className="text-sm text-destructive">
                 {form.formState.errors.root.message}
@@ -109,6 +114,7 @@ export default function LoginForm() {
             >
               {t("submitButton")}
             </Button>
+            <SocialLoginButtons />
             <div className="flex flex-col gap-1 text-center text-sm text-muted-foreground">
               <Link
                 href={`/${locale}/signup`}
