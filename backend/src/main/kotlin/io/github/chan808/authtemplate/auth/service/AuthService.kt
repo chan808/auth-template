@@ -37,6 +37,12 @@ class AuthService(
             throw AuthException(ErrorCode.INVALID_CREDENTIALS)
         }
 
+        // 소셜 로그인으로 가입한 계정은 비밀번호 로그인 불가
+        if (member.isOAuthAccount) {
+            log.warn("[AUTH] 인증 실패 email={} reason=OAUTH_ACCOUNT provider={}", maskEmail(email), member.provider)
+            throw AuthException(ErrorCode.OAUTH_ACCOUNT_NO_PASSWORD)
+        }
+
         // 이메일 존재 여부와 비밀번호 오류를 같은 예외로 처리 → 계정 열거 공격(enumeration attack) 방지
         if (!passwordEncoder.matches(request.password, member.password)) {
             log.warn("[AUTH] 인증 실패 email={} reason=INVALID_PASSWORD", maskEmail(email))
@@ -107,6 +113,23 @@ class AuthService(
     fun logout(rtToken: String?) {
         rtToken ?: return
         refreshTokenStore.delete(parseSid(rtToken))
+    }
+
+    /** OAuth2SuccessHandler에서 RT/AT 발급 시 사용 */
+    fun issueTokensForOAuth(memberId: Long, role: String = "USER"): Pair<String, String> {
+        val (sid, rt) = generateRefreshToken()
+        refreshTokenStore.save(
+            sid = sid,
+            session = RefreshTokenSession(
+                memberId = memberId,
+                role = role,
+                tokenHash = hashToken(rt),
+                absoluteExpiryEpoch = Instant.now().plusSeconds(30L * 24 * 3600).epochSecond,
+            ),
+            ttlSeconds = 7L * 24 * 3600,
+        )
+        refreshTokenStore.addSession(memberId, sid)
+        return jwtProvider.generateAccessToken(memberId, role) to rt
     }
 
     private fun generateRefreshToken(): Pair<String, String> {

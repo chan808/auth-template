@@ -55,6 +55,9 @@ dependencies {
     // Mail
     implementation("org.springframework.boot:spring-boot-starter-mail")
 
+    // OAuth2
+    implementation("org.springframework.boot:spring-boot-starter-oauth2-client")
+
     // Dev
     developmentOnly("org.springframework.boot:spring-boot-devtools")
     annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")

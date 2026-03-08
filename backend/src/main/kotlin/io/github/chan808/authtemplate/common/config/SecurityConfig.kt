@@ -1,5 +1,8 @@
 package io.github.chan808.authtemplate.common.config
 
+import io.github.chan808.authtemplate.auth.oauth2.CustomOAuth2UserService
+import io.github.chan808.authtemplate.auth.oauth2.OAuth2FailureHandler
+import io.github.chan808.authtemplate.auth.oauth2.OAuth2SuccessHandler
 import io.github.chan808.authtemplate.common.security.JwtAuthenticationFilter
 import io.github.chan808.authtemplate.common.security.JwtProvider
 import io.github.chan808.authtemplate.common.security.SecurityExceptionHandler
@@ -26,7 +29,9 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 class SecurityConfig(
     private val jwtProvider: JwtProvider,
     private val securityExceptionHandler: SecurityExceptionHandler,
-    // 운영 환경에서는 CORS_ALLOWED_ORIGIN 환경변수로 실제 도메인 지정
+    private val customOAuth2UserService: CustomOAuth2UserService,
+    private val oauth2SuccessHandler: OAuth2SuccessHandler,
+    private val oauth2FailureHandler: OAuth2FailureHandler,
     @Value("\${cors.allowed-origin:http://localhost:3000}") private val allowedOrigin: String,
     @Value("\${cookie.secure:false}") private val cookieSecure: Boolean,
 ) {
@@ -52,7 +57,15 @@ class SecurityConfig(
             it.requestMatchers("/api/auth/**").permitAll()
             it.requestMatchers(HttpMethod.POST, "/api/members").permitAll() // 회원가입
             it.requestMatchers("/api-docs/**", "/swagger-ui/**").permitAll()
+            it.requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll() // OAuth2 흐름
             it.anyRequest().authenticated()
+        }
+        .oauth2Login { oauth2 ->
+            oauth2.authorizationEndpoint { it.baseUri("/oauth2/authorization") }
+            oauth2.redirectionEndpoint { it.baseUri("/login/oauth2/code/*") }
+            oauth2.userInfoEndpoint { it.userService(customOAuth2UserService) }
+            oauth2.successHandler(oauth2SuccessHandler)
+            oauth2.failureHandler(oauth2FailureHandler)
         }
         .addFilterBefore(JwtAuthenticationFilter(jwtProvider), UsernamePasswordAuthenticationFilter::class.java)
         .exceptionHandling {

@@ -19,6 +19,8 @@ enum class ErrorCode(
     REFRESH_TOKEN_NOT_FOUND(HttpStatus.UNAUTHORIZED, "리프레시 토큰을 찾을 수 없습니다."),
     REFRESH_TOKEN_MISMATCH(HttpStatus.UNAUTHORIZED, "리프레시 토큰이 일치하지 않습니다."),
     REISSUE_CONFLICT(HttpStatus.CONFLICT, "토큰 재발급이 진행 중입니다. 잠시 후 재시도해주세요."), // Redis SETNX 락 충돌
+    OAUTH_ACCOUNT_NO_PASSWORD(HttpStatus.BAD_REQUEST, "소셜 로그인으로 가입된 계정입니다. 해당 소셜 로그인을 이용해주세요."),
+    OAUTH_CODE_NOT_FOUND(HttpStatus.UNAUTHORIZED, "유효하지 않거나 만료된 코드입니다."),
 
     // member
     EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다."),
