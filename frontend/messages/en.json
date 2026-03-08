@@ -7,7 +7,19 @@
       "passwordLabel": "Password",
       "submitButton": "Sign In",
       "signupLink": "Don't have an account? Sign Up",
-      "errorMessage": "Invalid email or password."
+      "forgotPasswordLink": "Forgot your password?",
+      "errorMessage": "Invalid email or password.",
+      "resetSuccessMessage": "Password changed. Please sign in with your new password."
+    },
+    "forgotPassword": {
+      "title": "Reset Password",
+      "description": "Enter your email address and we'll send you a reset link.",
+      "emailLabel": "Email",
+      "emailPlaceholder": "email@example.com",
+      "submitButton": "Send Reset Link",
+      "errorMessage": "Request failed. Please try again later.",
+      "sentTitle": "Check your email",
+      "sentDescription": "We sent a reset link to your inbox. (valid for 30 minutes)"
     },
     "signup": {
       "title": "Sign Up",

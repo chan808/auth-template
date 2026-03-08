@@ -1,13 +1,12 @@
 "use client";
 
-import { useTranslations, useLocale } from "next-intl";
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import type { AxiosError } from "axios";
-import { useAuth } from "../hooks/useAuth";
+import { authApi } from "@/features/auth/api/authApi";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import {
@@ -27,34 +26,47 @@ import {
 
 const schema = z.object({
   email: z.string().email(),
-  password: z.string().min(8),
 });
 
 type FormData = z.infer<typeof schema>;
 
-export default function LoginForm() {
-  const t = useTranslations("auth.login");
-  const locale = useLocale();
-  const searchParams = useSearchParams();
-  const resetSuccess = searchParams.get("reset") === "success";
-  const { login } = useAuth();
+export default function ForgotPasswordForm() {
+  const t = useTranslations("auth.forgotPassword");
+  const [submitted, setSubmitted] = useState(false);
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { email: "" },
   });
 
   const onSubmit = async (data: FormData) => {
     try {
-      await login(data);
+      await authApi.requestPasswordReset(data.email);
     } catch (error) {
-      const detail = (error as AxiosError<{ detail?: string }>).response?.data
-        ?.detail;
-      // 미인증 계정은 백엔드 detail 메시지를 그대로 노출
-      form.setError("root", { message: detail ?? t("errorMessage") });
-      form.resetField("password");
+      // enumeration attack 방지: 존재하지 않는 이메일도 성공 응답
+      // 네트워크 오류 등 명백한 실패만 에러 처리
+      const status = (error as AxiosError).response?.status;
+      if (status && status !== 404) {
+        form.setError("root", { message: t("errorMessage") });
+        return;
+      }
     }
+    // 이메일 존재 여부 노출 방지: 항상 성공 화면 표시
+    setSubmitted(true);
   };
+
+  if (submitted) {
+    return (
+      <Card className="w-full max-w-md text-center">
+        <CardHeader>
+          <CardTitle className="text-2xl">{t("sentTitle")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">{t("sentDescription")}</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="w-full max-w-md">
@@ -64,6 +76,7 @@ export default function LoginForm() {
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <p className="text-sm text-muted-foreground">{t("description")}</p>
             <FormField
               control={form.control}
               name="email"
@@ -81,22 +94,6 @@ export default function LoginForm() {
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t("passwordLabel")}</FormLabel>
-                  <FormControl>
-                    <Input type="password" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            {resetSuccess && (
-              <p className="text-sm text-green-600">{t("resetSuccessMessage")}</p>
-            )}
             {form.formState.errors.root && (
               <p className="text-sm text-destructive">
                 {form.formState.errors.root.message}
@@ -109,20 +106,6 @@ export default function LoginForm() {
             >
               {t("submitButton")}
             </Button>
-            <div className="flex flex-col gap-1 text-center text-sm text-muted-foreground">
-              <Link
-                href={`/${locale}/signup`}
-                className="hover:underline hover:text-foreground"
-              >
-                {t("signupLink")}
-              </Link>
-              <Link
-                href={`/${locale}/forgot-password`}
-                className="hover:underline hover:text-foreground"
-              >
-                {t("forgotPasswordLink")}
-              </Link>
-            </div>
           </form>
         </Form>
       </CardContent>

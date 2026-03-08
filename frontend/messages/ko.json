@@ -7,7 +7,19 @@
       "passwordLabel": "비밀번호",
       "submitButton": "로그인",
       "signupLink": "계정이 없으신가요? 회원가입",
-      "errorMessage": "이메일 또는 비밀번호가 올바르지 않습니다."
+      "forgotPasswordLink": "비밀번호를 잊으셨나요?",
+      "errorMessage": "이메일 또는 비밀번호가 올바르지 않습니다.",
+      "resetSuccessMessage": "비밀번호가 변경되었습니다. 새 비밀번호로 로그인해주세요."
+    },
+    "forgotPassword": {
+      "title": "비밀번호 재설정",
+      "description": "가입한 이메일을 입력하면 재설정 링크를 발송합니다.",
+      "emailLabel": "이메일",
+      "emailPlaceholder": "email@example.com",
+      "submitButton": "재설정 링크 발송",
+      "errorMessage": "요청에 실패했습니다. 잠시 후 다시 시도해주세요.",
+      "sentTitle": "메일을 확인해주세요",
+      "sentDescription": "재설정 링크를 발송했습니다. 받은 편지함을 확인해주세요. (30분 유효)"
     },
     "signup": {
       "title": "회원가입",
