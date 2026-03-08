@@ -31,6 +31,9 @@ class Member(
     @Column(name = "provider_id", nullable = true)
     val providerId: String? = null,
 
+    @Column(nullable = true, length = 50)
+    var nickname: String? = null,
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     val role: MemberRole = MemberRole.USER,
@@ -40,4 +43,8 @@ class Member(
     val id: Long = 0L,
 ) : BaseEntity() {
     val isOAuthAccount: Boolean get() = provider != null
+
+    fun updateProfile(nickname: String?) {
+        this.nickname = nickname?.trim()?.ifBlank { null }
+    }
 }
