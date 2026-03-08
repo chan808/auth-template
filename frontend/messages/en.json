@@ -57,5 +57,16 @@
         "description": "The verification link is invalid or has expired."
       }
     }
+  },
+  "member": {
+    "changePassword": {
+      "title": "Change Password",
+      "currentPasswordLabel": "Current Password",
+      "newPasswordLabel": "New Password",
+      "confirmPasswordLabel": "Confirm New Password",
+      "submitButton": "Change",
+      "successMessage": "Password changed successfully.",
+      "errorMessage": "Failed to change password."
+    }
   }
 }

@@ -8,4 +8,7 @@ export const memberApi = {
     api.post<ApiResponse<MemberResponse>>("/api/members", data),
 
   getMyInfo: () => api.get<ApiResponse<MemberResponse>>("/api/members/me"),
+
+  changePassword: (data: { currentPassword: string; newPassword: string }) =>
+    api.patch<ApiResponse<void>>("/api/members/me/password", data),
 };
