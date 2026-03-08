@@ -26,8 +26,9 @@ spring:
     locations: classpath:db/migration
     # V1·V2는 이미 수동 적용됨 — baseline으로 이력만 기록하고 재실행 방지
     # 이후 V3+ 마이그레이션은 Flyway가 자동 적용
-    baseline-on-migrate: true
-    baseline-version: 2
+    # DB를 새로 만든 경우: baseline-on-migrate를 false로 두어 V1부터 전체 마이그레이션 실행
+    # 기존 DB에 Flyway를 사후 도입할 때만 baseline-on-migrate: true, baseline-version: N 사용
+    baseline-on-migrate: false
 
   data:
     redis:
