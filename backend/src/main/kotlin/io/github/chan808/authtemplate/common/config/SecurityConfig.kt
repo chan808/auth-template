@@ -14,8 +14,6 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.config.http.SessionCreationPolicy
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
-import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter
@@ -91,7 +89,4 @@ class SecurityConfig(
         }
     }
 
-    @Bean
-    // BCrypt work factor 기본값(10): 인증 서버 부하와 보안 강도 균형 → 운영 환경 요건에 따라 조정
-    fun passwordEncoder(): PasswordEncoder = BCryptPasswordEncoder()
 }
