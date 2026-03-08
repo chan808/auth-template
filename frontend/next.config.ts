@@ -19,6 +19,12 @@ const nextConfig: NextConfig = {
         destination: "/ko/reset-password",
         permanent: false,
       },
+      // OAuth2 콜백: 백엔드가 locale 없이 리다이렉트하므로 기본 locale로 포워딩
+      {
+        source: "/auth/callback",
+        destination: "/ko/auth/callback",
+        permanent: false,
+      },
     ];
   },
 };
