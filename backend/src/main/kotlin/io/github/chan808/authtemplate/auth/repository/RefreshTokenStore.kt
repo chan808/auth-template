@@ -2,6 +2,7 @@ package io.github.chan808.authtemplate.auth.repository
 
 import io.github.chan808.authtemplate.auth.domain.RefreshTokenSession
 import org.springframework.data.redis.core.StringRedisTemplate
+import org.springframework.data.redis.core.script.DefaultRedisScript
 import org.springframework.stereotype.Component
 import tools.jackson.databind.ObjectMapper
 import java.util.concurrent.TimeUnit
@@ -18,6 +19,23 @@ class RefreshTokenStore(
         private const val MEMBER_SESSIONS_PREFIX = "MEMBER_SESSIONS:"
         // 세트 TTL = 절대 세션 최대치(30일): 어떤 세션도 이 기간 이후엔 존재하지 않음
         private const val MEMBER_SESSIONS_TTL = 30L * 24 * 3600
+
+        // SMEMBERS → DEL을 단일 Lua 트랜잭션으로 처리
+        // 이유: 두 명령 사이에 새 sid가 SADD되면 그 세션은 삭제되지 않고 잔류할 수 있음
+        // Lua 스크립트는 Redis 싱글스레드에서 원자적으로 실행되므로 이 gap을 제거함
+        private val DELETE_ALL_SESSIONS_SCRIPT = DefaultRedisScript(
+            """
+            local setKey = KEYS[1]
+            local rtPrefix = ARGV[1]
+            local sids = redis.call('SMEMBERS', setKey)
+            for _, sid in ipairs(sids) do
+                redis.call('DEL', rtPrefix .. sid)
+            end
+            redis.call('DEL', setKey)
+            return #sids
+            """.trimIndent(),
+            Long::class.java,
+        )
     }
 
     fun save(sid: String, session: RefreshTokenSession, ttlSeconds: Long) {
@@ -55,7 +73,6 @@ class RefreshTokenStore(
 
     fun deleteAllSessionsForMember(memberId: Long) {
         val setKey = "$MEMBER_SESSIONS_PREFIX$memberId"
-        val sids = redisTemplate.opsForSet().members(setKey) ?: emptySet()
-        redisTemplate.delete(sids.map { "$RT_PREFIX$it" } + setKey)
+        redisTemplate.execute(DELETE_ALL_SESSIONS_SCRIPT, listOf(setKey), RT_PREFIX)
     }
 }
