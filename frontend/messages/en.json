@@ -63,6 +63,19 @@
     }
   },
   "member": {
+    "profile": {
+      "title": "My Profile",
+      "emailLabel": "Email",
+      "nicknameLabel": "Nickname",
+      "nicknamePlaceholder": "Enter your nickname",
+      "providerLabel": "Sign-in method",
+      "providerLocal": "Email",
+      "editButton": "Edit Profile",
+      "saveButton": "Save",
+      "cancelButton": "Cancel",
+      "successMessage": "Profile updated successfully.",
+      "errorMessage": "Failed to update profile."
+    },
     "changePassword": {
       "title": "Change Password",
       "currentPasswordLabel": "Current Password",
@@ -71,6 +84,14 @@
       "submitButton": "Change",
       "successMessage": "Password changed successfully.",
       "errorMessage": "Failed to change password."
+    },
+    "withdraw": {
+      "button": "Delete Account",
+      "dialogTitle": "Are you sure?",
+      "dialogDescription": "Your account and all data will be permanently deleted and cannot be recovered.",
+      "confirmButton": "Delete Account",
+      "cancelButton": "Cancel",
+      "errorMessage": "Something went wrong. Please try again."
     }
   }
 }
