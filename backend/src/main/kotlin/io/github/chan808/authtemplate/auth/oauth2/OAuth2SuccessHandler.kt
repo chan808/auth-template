@@ -28,7 +28,7 @@ class OAuth2SuccessHandler(
         response: HttpServletResponse,
         authentication: Authentication,
     ) {
-        val oAuth2User = authentication.principal as CustomOAuth2User
+        val oAuth2User = authentication.principal as AuthenticatedOAuth2User
         val (accessToken, rawRt) = authService.issueTokensForOAuth(oAuth2User.memberId)
 
         // RT: HttpOnly 쿠키

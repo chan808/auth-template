@@ -1,6 +1,7 @@
 package io.github.chan808.authtemplate.common.config
 
 import io.github.chan808.authtemplate.auth.oauth2.CustomOAuth2UserService
+import io.github.chan808.authtemplate.auth.oauth2.CustomOidcUserService
 import io.github.chan808.authtemplate.auth.oauth2.OAuth2FailureHandler
 import io.github.chan808.authtemplate.auth.oauth2.OAuth2SuccessHandler
 import io.github.chan808.authtemplate.common.security.JwtAuthenticationFilter
@@ -36,6 +37,7 @@ class SecurityConfig(
     // required = false: 미설정 시 null로 주입되어 앱 기동 가능 (소셜 로그인 비활성화 상태)
     @Autowired(required = false) private val clientRegistrationRepository: ClientRegistrationRepository? = null
     @Autowired(required = false) private val customOAuth2UserService: CustomOAuth2UserService? = null
+    @Autowired(required = false) private val customOidcUserService: CustomOidcUserService? = null
     @Autowired(required = false) private val oauth2SuccessHandler: OAuth2SuccessHandler? = null
     @Autowired(required = false) private val oauth2FailureHandler: OAuth2FailureHandler? = null
 
@@ -76,7 +78,10 @@ class SecurityConfig(
             http.oauth2Login { oauth2 ->
                 oauth2.authorizationEndpoint { it.baseUri("/oauth2/authorization") }
                 oauth2.redirectionEndpoint { it.baseUri("/login/oauth2/code/*") }
-                oauth2.userInfoEndpoint { it.userService(customOAuth2UserService) }
+                oauth2.userInfoEndpoint {
+                    it.userService(customOAuth2UserService)       // 일반 OAuth2 (Naver, Kakao)
+                    it.oidcUserService(customOidcUserService)     // OIDC (Google)
+                }
                 oauth2.successHandler(oauth2SuccessHandler)
                 oauth2.failureHandler(oauth2FailureHandler)
             }
