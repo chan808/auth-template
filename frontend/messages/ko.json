@@ -63,6 +63,19 @@
     }
   },
   "member": {
+    "profile": {
+      "title": "내 프로필",
+      "emailLabel": "이메일",
+      "nicknameLabel": "닉네임",
+      "nicknamePlaceholder": "닉네임을 입력하세요",
+      "providerLabel": "가입 방식",
+      "providerLocal": "이메일",
+      "editButton": "프로필 수정",
+      "saveButton": "저장",
+      "cancelButton": "취소",
+      "successMessage": "프로필이 수정되었습니다.",
+      "errorMessage": "프로필 수정에 실패했습니다."
+    },
     "changePassword": {
       "title": "비밀번호 변경",
       "currentPasswordLabel": "현재 비밀번호",
@@ -71,6 +84,14 @@
       "submitButton": "변경",
       "successMessage": "비밀번호가 변경되었습니다.",
       "errorMessage": "비밀번호 변경에 실패했습니다."
+    },
+    "withdraw": {
+      "button": "회원 탈퇴",
+      "dialogTitle": "정말 탈퇴하시겠어요?",
+      "dialogDescription": "탈퇴 시 계정과 모든 데이터가 즉시 삭제되며 복구할 수 없습니다.",
+      "confirmButton": "탈퇴하기",
+      "cancelButton": "취소",
+      "errorMessage": "탈퇴 처리 중 오류가 발생했습니다. 다시 시도해주세요."
     }
   }
 }

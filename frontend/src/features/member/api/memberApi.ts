@@ -9,6 +9,11 @@ export const memberApi = {
 
   getMyInfo: () => api.get<ApiResponse<MemberResponse>>("/api/members/me"),
 
+  updateProfile: (data: { nickname: string | null }) =>
+    api.patch<ApiResponse<MemberResponse>>("/api/members/me/profile", data),
+
   changePassword: (data: { currentPassword: string; newPassword: string }) =>
     api.patch<ApiResponse<void>>("/api/members/me/password", data),
+
+  withdraw: () => api.delete<ApiResponse<void>>("/api/members/me"),
 };

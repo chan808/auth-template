@@ -37,18 +37,22 @@ const schema = z
 
 type FormData = z.infer<typeof schema>;
 
-export default function ChangePasswordForm() {
+interface Props {
+  /** null이면 로컬 계정, 값이 있으면 소셜 계정 → 컴포넌트 미표시 */
+  provider: string | null;
+}
+
+export default function ChangePasswordForm({ provider }: Props) {
   const t = useTranslations("member.changePassword");
   const [success, setSuccess] = useState(false);
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    },
+    defaultValues: { currentPassword: "", newPassword: "", confirmPassword: "" },
   });
+
+  // 소셜 계정은 비밀번호가 없으므로 섹션 자체를 렌더링하지 않음
+  if (provider !== null) return null;
 
   const onSubmit = async (data: FormData) => {
     try {
@@ -59,8 +63,7 @@ export default function ChangePasswordForm() {
       setSuccess(true);
       form.reset();
     } catch (error) {
-      const detail = (error as AxiosError<{ detail?: string }>).response?.data
-        ?.detail;
+      const detail = (error as AxiosError<{ detail?: string }>).response?.data?.detail;
       form.setError("root", { message: detail ?? t("errorMessage") });
     }
   };
