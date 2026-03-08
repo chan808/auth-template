@@ -7,6 +7,7 @@ import io.github.chan808.authtemplate.common.security.BreachedPasswordChecker
 import io.github.chan808.authtemplate.member.api.ChangePasswordRequest
 import io.github.chan808.authtemplate.member.api.MemberResponse
 import io.github.chan808.authtemplate.member.api.SignupRequest
+import io.github.chan808.authtemplate.member.api.UpdateProfileRequest
 import io.github.chan808.authtemplate.member.domain.Member
 import io.github.chan808.authtemplate.member.repository.MemberRepository
 import org.springframework.security.crypto.password.PasswordEncoder
@@ -25,6 +26,7 @@ class MemberService(
     private val refreshTokenStore: RefreshTokenStore,
 ) {
     private val log = LoggerFactory.getLogger(MemberService::class.java)
+
     @Transactional
     fun signup(request: SignupRequest, ip: String): MemberResponse {
         signupRateLimitService.check(ip)
@@ -50,6 +52,14 @@ class MemberService(
     }
 
     @Transactional
+    fun updateProfile(memberId: Long, request: UpdateProfileRequest): MemberResponse {
+        val member = getById(memberId)
+        member.updateProfile(request.nickname)
+        log.info("[MEMBER] 프로필 수정 memberId={}", memberId)
+        return MemberResponse.from(member)
+    }
+
+    @Transactional
     fun changePassword(memberId: Long, request: ChangePasswordRequest) {
         val member = getById(memberId)
         if (!passwordEncoder.matches(request.currentPassword, member.password)) {
@@ -60,6 +70,15 @@ class MemberService(
         // 비밀번호 변경 후 모든 기존 세션 무효화 → 탈취된 세션 강제 로그아웃
         refreshTokenStore.deleteAllSessionsForMember(memberId)
         log.info("[AUTH] 비밀번호 변경 완료 memberId={}", memberId)
+    }
+
+    @Transactional
+    fun withdraw(memberId: Long) {
+        val member = getById(memberId)
+        // 모든 RT 세션 먼저 정리 → 이후 AT로 재요청 불가
+        refreshTokenStore.deleteAllSessionsForMember(memberId)
+        memberRepository.delete(member)
+        log.info("[MEMBER] 회원 탈퇴 완료 memberId={}", memberId)
     }
 
     fun getById(memberId: Long): Member =
