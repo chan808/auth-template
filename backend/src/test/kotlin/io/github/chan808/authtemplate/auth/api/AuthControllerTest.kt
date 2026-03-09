@@ -1,6 +1,6 @@
 package io.github.chan808.authtemplate.auth.api
 
-import com.ninja_squad.springmockk.MockkBean
+import com.ninjasquad.springmockk.MockkBean
 import io.github.chan808.authtemplate.auth.repository.OAuthCodeStore
 import io.github.chan808.authtemplate.auth.service.AuthService
 import io.github.chan808.authtemplate.auth.service.PasswordResetService
@@ -16,7 +16,7 @@ import io.mockk.just
 import io.mockk.Runs
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
 import org.springframework.test.context.TestPropertySource

@@ -15,7 +15,7 @@ export default function SocialLoginButtons() {
   const t = useTranslations("auth.social");
 
   const handleLogin = (provider: string) => {
-    window.location.href = `${BACKEND_URL}/oauth2/authorization/${provider}`;
+    window.location.assign(`${BACKEND_URL}/oauth2/authorization/${provider}`);
   };
 
   return (

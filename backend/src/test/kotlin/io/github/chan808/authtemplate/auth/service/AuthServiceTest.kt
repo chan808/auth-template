@@ -9,10 +9,10 @@ import io.github.chan808.authtemplate.common.security.JwtProvider
 import io.github.chan808.authtemplate.member.domain.Member
 import io.github.chan808.authtemplate.member.domain.MemberRole
 import io.github.chan808.authtemplate.member.repository.MemberRepository
+import io.mockk.Runs
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
-import io.mockk.Runs
 import io.mockk.verify
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -28,41 +28,52 @@ class AuthServiceTest {
     private val passwordEncoder: PasswordEncoder = mockk()
     private val jwtProvider: JwtProvider = mockk()
     private val refreshTokenStore: RefreshTokenStore = mockk()
-    private val authService = AuthService(memberRepository, passwordEncoder, jwtProvider, refreshTokenStore)
+    private val loginRateLimitService: LoginRateLimitService = mockk()
+    private val authService = AuthService(
+        memberRepository,
+        passwordEncoder,
+        jwtProvider,
+        refreshTokenStore,
+        loginRateLimitService,
+    )
 
     private val member = Member(
         email = "test@example.com",
         password = "encoded-password",
+        emailVerified = true,
         role = MemberRole.USER,
         id = 1L,
     )
 
     @Test
-    fun `올바른 자격증명으로 로그인하면 AT와 RT 쌍을 반환한다`() {
+    fun `valid credentials return access token and refresh token`() {
+        every { loginRateLimitService.check(any(), any()) } just Runs
         every { memberRepository.findByEmail("test@example.com") } returns member
         every { passwordEncoder.matches(any(), any()) } returns true
         every { jwtProvider.generateAccessToken(1L, "USER") } returns "access-token"
         every { refreshTokenStore.save(any(), any(), any()) } just Runs
+        every { refreshTokenStore.addSession(any(), any()) } just Runs
 
-        val (at, rt) = authService.login(LoginRequest("test@example.com", "password123"))
+        val (at, rt) = authService.login(LoginRequest("test@example.com", "password123"), "127.0.0.1")
 
         assertEquals("access-token", at)
-        assertTrue(rt.contains('.'), "RT 형식은 {sid}.{randomPart} 이어야 한다")
+        assertTrue(rt.contains('.'))
     }
 
     @Test
-    fun `잘못된 비밀번호로 로그인하면 INVALID_CREDENTIALS 예외가 발생한다`() {
+    fun `invalid password throws invalid credentials`() {
+        every { loginRateLimitService.check(any(), any()) } just Runs
         every { memberRepository.findByEmail(any()) } returns member
         every { passwordEncoder.matches(any(), any()) } returns false
 
         val ex = assertThrows<AuthException> {
-            authService.login(LoginRequest("test@example.com", "wrong-password"))
+            authService.login(LoginRequest("test@example.com", "wrong-password"), "127.0.0.1")
         }
         assertEquals(ErrorCode.INVALID_CREDENTIALS, ex.errorCode)
     }
 
     @Test
-    fun `재발급 요청이 중복되면 REISSUE_CONFLICT 예외가 발생한다`() {
+    fun `reissue lock conflict throws reissue conflict`() {
         every { refreshTokenStore.tryLock(any()) } returns false
 
         val fakeRt = "${UUID.randomUUID()}.randompart"
@@ -72,7 +83,7 @@ class AuthServiceTest {
     }
 
     @Test
-    fun `RT 해시 불일치 시 세션을 즉시 무효화하고 REFRESH_TOKEN_MISMATCH 예외가 발생한다`() {
+    fun `refresh token mismatch revokes session and throws mismatch`() {
         val sid = UUID.randomUUID().toString()
         val session = RefreshTokenSession(
             memberId = 1L,
@@ -88,6 +99,6 @@ class AuthServiceTest {
         val ex = assertThrows<AuthException> { authService.reissue("$sid.actualrandompart") }
 
         assertEquals(ErrorCode.REFRESH_TOKEN_MISMATCH, ex.errorCode)
-        verify { refreshTokenStore.delete(sid) } // 탈취 의심 세션 즉시 제거 확인
+        verify { refreshTokenStore.delete(sid) }
     }
 }

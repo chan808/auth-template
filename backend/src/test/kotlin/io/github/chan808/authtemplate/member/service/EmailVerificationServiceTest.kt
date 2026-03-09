@@ -33,13 +33,13 @@ class EmailVerificationServiceTest {
     @Test
     fun `sendVerification 호출 시 토큰이 저장되고 이벤트가 발행된다`() {
         every { emailVerificationStore.save(any(), 1L, any()) } just Runs
-        every { eventPublisher.publishEvent(any()) } just Runs
+        every { eventPublisher.publishEvent(any<Any>()) } just Runs
 
         service.sendVerification(1L, "test@example.com")
 
         // 토큰이 저장됐는지, 이벤트가 정확히 1회 발행됐는지 확인
         verify(exactly = 1) { emailVerificationStore.save(any(), 1L, any()) }
-        verify(exactly = 1) { eventPublisher.publishEvent(any()) }
+        verify(exactly = 1) { eventPublisher.publishEvent(any<Any>()) }
     }
 
     @Test

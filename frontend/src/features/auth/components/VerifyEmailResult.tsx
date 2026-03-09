@@ -20,13 +20,10 @@ export default function VerifyEmailResult() {
   const locale = useLocale();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
-  const [status, setStatus] = useState<Status>("loading");
+  const [status, setStatus] = useState<Status>(token ? "loading" : "error");
 
   useEffect(() => {
-    if (!token) {
-      setStatus("error");
-      return;
-    }
+    if (!token) return;
     authApi
       .verifyEmail(token)
       .then(() => setStatus("success"))

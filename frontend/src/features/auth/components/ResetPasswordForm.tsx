@@ -1,6 +1,4 @@
 "use client";
-
-import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -45,12 +43,6 @@ export default function ResetPasswordForm() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
 
-  const [tokenValid, setTokenValid] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    setTokenValid(!!token);
-  }, [token]);
-
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { newPassword: "", confirmPassword: "" },
@@ -68,7 +60,7 @@ export default function ResetPasswordForm() {
     }
   };
 
-  if (tokenValid === false) {
+  if (!token) {
     return (
       <Card className="w-full max-w-md text-center">
         <CardHeader>

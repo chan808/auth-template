@@ -74,7 +74,13 @@ class SecurityConfig(
             }
 
         // OAuth2 credentials가 설정된 경우에만 소셜 로그인 활성화
-        if (clientRegistrationRepository != null) {
+        if (
+            clientRegistrationRepository != null &&
+            customOAuth2UserService != null &&
+            customOidcUserService != null &&
+            oauth2SuccessHandler != null &&
+            oauth2FailureHandler != null
+        ) {
             http.oauth2Login { oauth2 ->
                 oauth2.authorizationEndpoint { it.baseUri("/oauth2/authorization") }
                 oauth2.redirectionEndpoint { it.baseUri("/login/oauth2/code/*") }
