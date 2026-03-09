@@ -80,8 +80,9 @@ class AuthController(
     @PostMapping("/password-reset/request")
     fun requestPasswordReset(
         @RequestBody @Valid request: PasswordResetRequest,
+        servletRequest: HttpServletRequest,
     ): ResponseEntity<ApiResponse<Unit>> {
-        passwordResetService.requestReset(request.email)
+        passwordResetService.requestReset(request.email, servletRequest.clientIp())
         return ResponseEntity.ok(ApiResponse.success())
     }
 

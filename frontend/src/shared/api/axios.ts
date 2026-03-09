@@ -36,12 +36,20 @@ interface RetryableConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
 }
 
+const isAuthEndpoint = (url?: string): boolean =>
+  url?.includes("/api/auth/") ?? false;
+
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const original = error.config as RetryableConfig | undefined;
 
-    if (error.response?.status !== 401 || !original || original._retry) {
+    if (
+      error.response?.status !== 401 ||
+      !original ||
+      original._retry ||
+      isAuthEndpoint(original.url)
+    ) {
       return Promise.reject(error);
     }
 

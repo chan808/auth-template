@@ -5,6 +5,9 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  turbopack: {
+    root: __dirname,
+  },
   // 이메일 링크 등 외부 링크는 locale 없이 오므로 기본 locale로 redirect
   // 백엔드 app.base-url은 locale과 무관하게 유지
   async redirects() {

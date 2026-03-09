@@ -186,7 +186,7 @@ class AuthControllerTest {
 
     @Test
     fun `미가입 이메일로 비밀번호 재설정 요청해도 200을 반환한다 (열거 공격 방지)`() {
-        every { passwordResetService.requestReset(any()) } just Runs
+        every { passwordResetService.requestReset(any(), any()) } just Runs
 
         mockMvc.post("/api/auth/password-reset/request") {
             contentType = MediaType.APPLICATION_JSON

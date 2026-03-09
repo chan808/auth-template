@@ -21,12 +21,16 @@ class PasswordResetService(
     private val mailService: MailService,
     private val breachedPasswordChecker: BreachedPasswordChecker,
     private val refreshTokenStore: RefreshTokenStore,
+    private val passwordResetRateLimitService: PasswordResetRateLimitService,
 ) {
     private val log = LoggerFactory.getLogger(PasswordResetService::class.java)
 
     // 이메일 존재 여부와 무관하게 동일 응답 → enumeration attack 방지
-    fun requestReset(email: String) {
-        val member = memberRepository.findByEmail(email.lowercase().trim()) ?: return
+    fun requestReset(email: String, ip: String) {
+        val normalizedEmail = email.lowercase().trim()
+        passwordResetRateLimitService.check(ip, normalizedEmail)
+
+        val member = memberRepository.findByEmail(normalizedEmail) ?: return
         val token = UUID.randomUUID().toString()
         passwordResetStore.save(token, member.id)
         mailService.sendPasswordResetEmail(member.email, token)
