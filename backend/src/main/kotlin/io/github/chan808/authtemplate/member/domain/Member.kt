@@ -1,6 +1,6 @@
 package io.github.chan808.authtemplate.member.domain
 
-import io.github.chan808.authtemplate.common.domain.BaseEntity
+import io.github.chan808.authtemplate.common.BaseEntity
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType

@@ -1,13 +1,15 @@
 package io.github.chan808.authtemplate.member.api
 
 import com.ninjasquad.springmockk.MockkBean
-import io.github.chan808.authtemplate.common.config.SecurityConfig
-import io.github.chan808.authtemplate.common.exception.ErrorCode
-import io.github.chan808.authtemplate.common.exception.MemberException
-import io.github.chan808.authtemplate.common.exception.RateLimitException
-import io.github.chan808.authtemplate.common.security.JwtProvider
-import io.github.chan808.authtemplate.common.security.SecurityExceptionHandler
-import io.github.chan808.authtemplate.member.service.MemberService
+import io.github.chan808.authtemplate.auth.infrastructure.security.SecurityConfig
+import io.github.chan808.authtemplate.common.ErrorCode
+import io.github.chan808.authtemplate.common.MemberException
+import io.github.chan808.authtemplate.common.RateLimitException
+import io.github.chan808.authtemplate.auth.infrastructure.security.JwtProvider
+import io.github.chan808.authtemplate.auth.infrastructure.security.SecurityExceptionHandler
+import io.github.chan808.authtemplate.member.application.MemberCommandService
+import io.github.chan808.authtemplate.member.presentation.MemberController
+import io.github.chan808.authtemplate.member.presentation.MemberResponse
 import io.jsonwebtoken.Claims
 import io.mockk.Runs
 import io.mockk.every
@@ -41,7 +43,7 @@ class MemberControllerTest {
     @Autowired
     lateinit var mockMvc: MockMvc
 
-    @MockkBean lateinit var memberService: MemberService
+    @MockkBean lateinit var memberCommandService: MemberCommandService
     @MockkBean lateinit var jwtProvider: JwtProvider
     private val testMemberResponse = MemberResponse(
         id = 1L,
@@ -64,7 +66,7 @@ class MemberControllerTest {
 
     @Test
     fun `signup returns 201`() {
-        every { memberService.signup(any(), any()) } returns testMemberResponse
+        every { memberCommandService.signup(any(), any()) } returns testMemberResponse
 
         mockMvc.post("/api/members") {
             contentType = MediaType.APPLICATION_JSON
@@ -77,7 +79,7 @@ class MemberControllerTest {
 
     @Test
     fun `duplicate email returns 409`() {
-        every { memberService.signup(any(), any()) } throws MemberException(ErrorCode.EMAIL_ALREADY_EXISTS)
+        every { memberCommandService.signup(any(), any()) } throws MemberException(ErrorCode.EMAIL_ALREADY_EXISTS)
 
         mockMvc.post("/api/members") {
             contentType = MediaType.APPLICATION_JSON
@@ -100,7 +102,7 @@ class MemberControllerTest {
 
     @Test
     fun `signup rate limit returns 429 with retry after`() {
-        every { memberService.signup(any(), any()) } throws RateLimitException(retryAfterSeconds = 3600L)
+        every { memberCommandService.signup(any(), any()) } throws RateLimitException(retryAfterSeconds = 3600L)
 
         mockMvc.post("/api/members") {
             contentType = MediaType.APPLICATION_JSON
@@ -113,7 +115,7 @@ class MemberControllerTest {
 
     @Test
     fun `get my info returns 200`() {
-        every { memberService.getMyInfo(1L) } returns testMemberResponse
+        every { memberCommandService.getMyInfo(1L) } returns testMemberResponse
 
         mockMvc.get("/api/members/me") {
             header("Authorization", authHeader)
@@ -133,7 +135,7 @@ class MemberControllerTest {
     @Test
     fun `update profile returns 200`() {
         val updated = testMemberResponse.copy(nickname = "new-nickname")
-        every { memberService.updateProfile(1L, any()) } returns updated
+        every { memberCommandService.updateProfile(1L, any()) } returns updated
 
         mockMvc.patch("/api/members/me/profile") {
             header("Authorization", authHeader)
@@ -160,7 +162,7 @@ class MemberControllerTest {
 
     @Test
     fun `change password returns 200`() {
-        every { memberService.changePassword(1L, any()) } just Runs
+        every { memberCommandService.changePassword(1L, any()) } just Runs
 
         mockMvc.patch("/api/members/me/password") {
             header("Authorization", authHeader)
@@ -173,7 +175,7 @@ class MemberControllerTest {
 
     @Test
     fun `invalid current password returns 400`() {
-        every { memberService.changePassword(1L, any()) } throws MemberException(ErrorCode.INVALID_CURRENT_PASSWORD)
+        every { memberCommandService.changePassword(1L, any()) } throws MemberException(ErrorCode.INVALID_CURRENT_PASSWORD)
 
         mockMvc.patch("/api/members/me/password") {
             header("Authorization", authHeader)
@@ -187,7 +189,7 @@ class MemberControllerTest {
 
     @Test
     fun `withdraw returns 200 and expires refresh token cookie`() {
-        every { memberService.withdraw(1L) } just Runs
+        every { memberCommandService.withdraw(1L) } just Runs
 
         mockMvc.delete("/api/members/me") {
             header("Authorization", authHeader)

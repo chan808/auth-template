@@ -1,10 +1,11 @@
 package io.github.chan808.authtemplate.member.service
 
-import io.github.chan808.authtemplate.common.exception.ErrorCode
-import io.github.chan808.authtemplate.common.exception.MemberException
+import io.github.chan808.authtemplate.common.ErrorCode
+import io.github.chan808.authtemplate.common.MemberException
+import io.github.chan808.authtemplate.member.application.EmailVerificationService
 import io.github.chan808.authtemplate.member.domain.Member
-import io.github.chan808.authtemplate.member.repository.EmailVerificationStore
-import io.github.chan808.authtemplate.member.repository.MemberRepository
+import io.github.chan808.authtemplate.member.infrastructure.redis.EmailVerificationStore
+import io.github.chan808.authtemplate.member.infrastructure.persistence.MemberRepository
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk

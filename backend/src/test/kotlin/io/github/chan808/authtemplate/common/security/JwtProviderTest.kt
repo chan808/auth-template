@@ -1,6 +1,7 @@
 package io.github.chan808.authtemplate.common.security
 
-import io.github.chan808.authtemplate.common.config.JwtProperties
+import io.github.chan808.authtemplate.auth.infrastructure.security.JwtProperties
+import io.github.chan808.authtemplate.auth.infrastructure.security.JwtProvider
 import io.jsonwebtoken.ExpiredJwtException
 import io.jsonwebtoken.JwtException
 import org.junit.jupiter.api.Test

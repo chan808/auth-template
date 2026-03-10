@@ -1,16 +1,17 @@
 package io.github.chan808.authtemplate.auth.api
 
 import com.ninjasquad.springmockk.MockkBean
-import io.github.chan808.authtemplate.auth.repository.OAuthCodeStore
-import io.github.chan808.authtemplate.auth.service.AuthService
-import io.github.chan808.authtemplate.auth.service.PasswordResetService
-import io.github.chan808.authtemplate.common.config.SecurityConfig
-import io.github.chan808.authtemplate.common.exception.AuthException
-import io.github.chan808.authtemplate.common.exception.ErrorCode
-import io.github.chan808.authtemplate.common.exception.RateLimitException
-import io.github.chan808.authtemplate.common.security.JwtProvider
-import io.github.chan808.authtemplate.common.security.SecurityExceptionHandler
-import io.github.chan808.authtemplate.member.service.EmailVerificationService
+import io.github.chan808.authtemplate.auth.infrastructure.redis.OAuthCodeStore
+import io.github.chan808.authtemplate.auth.application.AuthCommandService
+import io.github.chan808.authtemplate.auth.application.PasswordResetService
+import io.github.chan808.authtemplate.auth.presentation.AuthController
+import io.github.chan808.authtemplate.auth.infrastructure.security.SecurityConfig
+import io.github.chan808.authtemplate.common.AuthException
+import io.github.chan808.authtemplate.common.ErrorCode
+import io.github.chan808.authtemplate.common.RateLimitException
+import io.github.chan808.authtemplate.auth.infrastructure.security.JwtProvider
+import io.github.chan808.authtemplate.auth.infrastructure.security.SecurityExceptionHandler
+import io.github.chan808.authtemplate.member.application.EmailVerificationService
 import io.mockk.every
 import io.mockk.just
 import io.mockk.Runs
@@ -40,7 +41,7 @@ class AuthControllerTest {
     @Autowired
     lateinit var mockMvc: MockMvc
 
-    @MockkBean lateinit var authService: AuthService
+    @MockkBean lateinit var authCommandService: AuthCommandService
     @MockkBean lateinit var emailVerificationService: EmailVerificationService
     @MockkBean lateinit var passwordResetService: PasswordResetService
     @MockkBean lateinit var oAuthCodeStore: OAuthCodeStore
@@ -52,7 +53,7 @@ class AuthControllerTest {
 
     @Test
     fun `로그인 성공 시 AT를 응답 바디에, RT를 HttpOnly 쿠키로 반환한다`() {
-        every { authService.login(any(), any()) } returns ("access-token" to "sid.randompart")
+        every { authCommandService.login(any(), any()) } returns ("access-token" to "sid.randompart")
 
         mockMvc.post("/api/auth/login") {
             contentType = MediaType.APPLICATION_JSON
@@ -78,7 +79,7 @@ class AuthControllerTest {
 
     @Test
     fun `잘못된 자격증명으로 로그인하면 401을 반환한다`() {
-        every { authService.login(any(), any()) } throws AuthException(ErrorCode.INVALID_CREDENTIALS)
+        every { authCommandService.login(any(), any()) } throws AuthException(ErrorCode.INVALID_CREDENTIALS)
 
         mockMvc.post("/api/auth/login") {
             contentType = MediaType.APPLICATION_JSON
@@ -91,7 +92,7 @@ class AuthControllerTest {
 
     @Test
     fun `로그인 요청이 Rate Limit을 초과하면 429와 Retry-After 헤더를 반환한다`() {
-        every { authService.login(any(), any()) } throws RateLimitException(retryAfterSeconds = 60L)
+        every { authCommandService.login(any(), any()) } throws RateLimitException(retryAfterSeconds = 60L)
 
         mockMvc.post("/api/auth/login") {
             contentType = MediaType.APPLICATION_JSON
@@ -106,7 +107,7 @@ class AuthControllerTest {
 
     @Test
     fun `유효한 RT 쿠키와 X-CSRF-GUARD 헤더로 재발급 시 새 AT와 RT를 반환한다`() {
-        every { authService.reissue(any()) } returns ("new-access-token" to "new-sid.randompart")
+        every { authCommandService.reissue(any()) } returns ("new-access-token" to "new-sid.randompart")
 
         mockMvc.post("/api/auth/reissue") {
             cookie(Cookie("refresh_token", "old-sid.randompart"))
@@ -142,7 +143,7 @@ class AuthControllerTest {
 
     @Test
     fun `로그아웃 성공 시 RT 쿠키 만료 처리(maxAge=0)와 함께 200을 반환한다`() {
-        every { authService.logout(any()) } just Runs
+        every { authCommandService.logout(any()) } just Runs
 
         mockMvc.post("/api/auth/logout") {
             cookie(Cookie("refresh_token", "sid.randompart"))
@@ -176,7 +177,7 @@ class AuthControllerTest {
     @Test
     fun `유효하지 않은 인증 토큰은 400을 반환한다`() {
         every { emailVerificationService.verify("bad-token") } throws
-            io.github.chan808.authtemplate.common.exception.MemberException(ErrorCode.VERIFICATION_TOKEN_INVALID)
+            io.github.chan808.authtemplate.common.MemberException(ErrorCode.VERIFICATION_TOKEN_INVALID)
 
         mockMvc.get("/api/auth/verify-email?token=bad-token")
             .andExpect { status { isBadRequest() } }

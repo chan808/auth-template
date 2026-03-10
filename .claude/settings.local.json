@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(mvn clean:*)",
+      "Bash(./gradlew build:*)",
+      "Bash(./gradlew compileKotlin:*)",
+      "Bash(xargs grep:*)",
+      "Bash(./gradlew compileTestKotlin:*)"
+    ]
+  }
+}

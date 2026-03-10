@@ -23,9 +23,19 @@ repositories {
     mavenCentral()
 }
 
+dependencyManagement {
+    imports {
+        mavenBom("org.springframework.modulith:spring-modulith-bom:2.0.3")
+    }
+}
+
 val jjwtVersion = "0.12.6"
+val archUnitVersion = "1.4.0"
 
 dependencies {
+    // Modulith
+    implementation("org.springframework.modulith:spring-modulith-starter-core")
+
     // Web & Security
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("org.springframework.boot:spring-boot-starter-security")
@@ -75,6 +85,12 @@ dependencies {
     testImplementation("org.testcontainers:testcontainers-mysql")
     testImplementation("org.testcontainers:testcontainers") // GenericContainer (Redis 등)
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+
+    // Modulith test
+    testImplementation("org.springframework.modulith:spring-modulith-starter-test")
+
+    // ArchUnit
+    testImplementation("com.tngtech.archunit:archunit-junit5:$archUnitVersion")
 }
 
 kotlin {

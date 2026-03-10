@@ -1,5 +1,6 @@
 package io.github.chan808.authtemplate.common.ratelimit
 
+import io.github.chan808.authtemplate.auth.infrastructure.redis.RateLimiter
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
