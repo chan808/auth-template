@@ -41,6 +41,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-validation")
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
 
     // Data
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
@@ -49,6 +50,7 @@ dependencies {
     // Kotlin / Jackson 3 (Boot 4.x 기본)
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("tools.jackson.module:jackson-module-kotlin")
+    implementation("io.micrometer:micrometer-registry-prometheus")
 
     // JWT: jjwt-impl/jackson은 구현 교체 가능성을 위해 runtimeOnly 격리
     implementation("io.jsonwebtoken:jjwt-api:$jjwtVersion")

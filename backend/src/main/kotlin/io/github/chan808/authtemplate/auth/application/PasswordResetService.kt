@@ -4,6 +4,7 @@ import io.github.chan808.authtemplate.auth.application.port.AuthMailSender
 import io.github.chan808.authtemplate.auth.infrastructure.redis.PasswordResetStore
 import io.github.chan808.authtemplate.common.AuthException
 import io.github.chan808.authtemplate.common.ErrorCode
+import io.github.chan808.authtemplate.common.metrics.DomainMetrics
 import io.github.chan808.authtemplate.member.api.MemberApi
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -16,6 +17,7 @@ class PasswordResetService(
     private val passwordResetStore: PasswordResetStore,
     private val mailSender: AuthMailSender,
     private val passwordResetRateLimitService: PasswordResetRateLimitService,
+    private val domainMetrics: DomainMetrics,
     @Value("\${app.base-url}") private val baseUrl: String,
 ) {
     private val log = LoggerFactory.getLogger(PasswordResetService::class.java)
@@ -24,8 +26,13 @@ class PasswordResetService(
         val normalizedEmail = email.lowercase().trim()
         passwordResetRateLimitService.check(ip, normalizedEmail)
 
-        val member = memberApi.findAuthMemberByEmail(normalizedEmail) ?: return
+        val member = memberApi.findAuthMemberByEmail(normalizedEmail) ?: run {
+            domainMetrics.recordPasswordResetRequest("ignored_unknown_email")
+            return
+        }
+
         if (member.isOAuthAccount) {
+            domainMetrics.recordPasswordResetRequest("ignored_oauth_account")
             log.info("[AUTH] OAuth account password reset blocked memberId={}", member.id)
             return
         }
@@ -35,25 +42,29 @@ class PasswordResetService(
 
         val resetLink = "$baseUrl/password-reset?token=$token"
         val body = """
-            |비밀번호 재설정을 요청하셨습니다.
+            |We received a password reset request for your account.
             |
-            |아래 링크를 눌러 비밀번호를 재설정해 주세요.
+            |Use the link below to set a new password:
             |$resetLink
             |
-            |이 링크는 30분 동안 유효합니다.
-            |본인이 요청하지 않았다면 이 메일을 무시해 주세요.
+            |This link remains valid for 30 minutes.
+            |If you did not request this change, you can ignore this email.
         """.trimMargin()
 
-        mailSender.send(member.email, "비밀번호 재설정", body)
-        log.info("[AUTH] 비밀번호 재설정 메일 발송 memberId={}", member.id)
+        mailSender.send(member.email, "Password reset", body)
+        domainMetrics.recordPasswordResetRequest("issued")
+        log.info("[AUTH] Password reset mail sent memberId={}", member.id)
     }
 
     fun confirmReset(token: String, newPassword: String) {
-        val memberId = passwordResetStore.findMemberId(token)
-            ?: throw AuthException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID)
+        val memberId = passwordResetStore.findMemberId(token) ?: run {
+            domainMetrics.recordPasswordResetConfirmation("invalid_token")
+            throw AuthException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID)
+        }
 
         memberApi.resetPassword(memberId, newPassword)
         passwordResetStore.delete(token)
-        log.info("[AUTH] 비밀번호 재설정 완료 memberId={}", memberId)
+        domainMetrics.recordPasswordResetConfirmation("success")
+        log.info("[AUTH] Password reset completed memberId={}", memberId)
     }
 }

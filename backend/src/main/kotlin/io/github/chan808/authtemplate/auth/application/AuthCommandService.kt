@@ -8,6 +8,7 @@ import io.github.chan808.authtemplate.auth.presentation.LoginRequest
 import io.github.chan808.authtemplate.common.AuthException
 import io.github.chan808.authtemplate.common.ErrorCode
 import io.github.chan808.authtemplate.common.maskEmail
+import io.github.chan808.authtemplate.common.metrics.DomainMetrics
 import io.github.chan808.authtemplate.member.api.MemberApi
 import org.slf4j.LoggerFactory
 import org.springframework.security.crypto.password.PasswordEncoder
@@ -25,6 +26,7 @@ class AuthCommandService(
     private val jwtProvider: JwtProvider,
     private val tokenStore: TokenStore,
     private val loginRateLimitService: LoginRateLimitService,
+    private val domainMetrics: DomainMetrics,
 ) : AuthApi {
 
     private val log = LoggerFactory.getLogger(AuthCommandService::class.java)
@@ -35,21 +37,25 @@ class AuthCommandService(
         loginRateLimitService.check(ip, email)
 
         val member = memberApi.findAuthMemberByEmail(email) ?: run {
+            domainMetrics.recordLoginFailure("email_not_found")
             log.warn("[AUTH] login failed email={} reason=EMAIL_NOT_FOUND", maskEmail(email))
             throw AuthException(ErrorCode.INVALID_CREDENTIALS)
         }
 
         if (member.isOAuthAccount) {
+            domainMetrics.recordLoginFailure("oauth_account")
             log.warn("[AUTH] login failed email={} reason=OAUTH_ACCOUNT provider={}", maskEmail(email), member.provider)
             throw AuthException(ErrorCode.OAUTH_ACCOUNT_NO_PASSWORD)
         }
 
         if (!passwordEncoder.matches(request.password, member.encodedPassword)) {
+            domainMetrics.recordLoginFailure("invalid_password")
             log.warn("[AUTH] login failed email={} reason=INVALID_PASSWORD", maskEmail(email))
             throw AuthException(ErrorCode.INVALID_CREDENTIALS)
         }
 
         if (!member.emailVerified) {
+            domainMetrics.recordLoginFailure("email_not_verified")
             log.warn("[AUTH] login failed email={} reason=EMAIL_NOT_VERIFIED", maskEmail(email))
             throw AuthException(ErrorCode.EMAIL_NOT_VERIFIED)
         }
@@ -66,6 +72,7 @@ class AuthCommandService(
             ttlSeconds = 7L * 24 * 3600,
         )
         tokenStore.addSession(member.id, sid)
+        domainMetrics.recordLoginSuccess()
 
         return jwtProvider.generateAccessToken(member.id, member.role.name) to rt
     }
@@ -74,12 +81,15 @@ class AuthCommandService(
         val sid = parseSid(rtToken)
 
         if (!tokenStore.tryLock(sid)) {
+            domainMetrics.recordRefreshTokenReissueFailure("lock_conflict")
             throw AuthException(ErrorCode.REISSUE_CONFLICT)
         }
 
         try {
-            val session = tokenStore.find(sid)
-                ?: throw AuthException(ErrorCode.REFRESH_TOKEN_NOT_FOUND)
+            val session = tokenStore.find(sid) ?: run {
+                domainMetrics.recordRefreshTokenReissueFailure("not_found")
+                throw AuthException(ErrorCode.REFRESH_TOKEN_NOT_FOUND)
+            }
 
             if (!MessageDigest.isEqual(
                     session.tokenHash.toByteArray(Charsets.UTF_8),
@@ -87,17 +97,20 @@ class AuthCommandService(
                 )
             ) {
                 tokenStore.deleteSession(session.memberId, sid)
+                domainMetrics.recordRefreshTokenReissueFailure("token_mismatch")
                 log.error("[SECURITY] refresh token mismatch detected sid={}", sid)
                 throw AuthException(ErrorCode.REFRESH_TOKEN_MISMATCH)
             }
 
             if (session.absoluteExpiryEpoch < Instant.now().epochSecond) {
                 tokenStore.deleteSession(session.memberId, sid)
+                domainMetrics.recordRefreshTokenReissueFailure("expired")
                 throw AuthException(ErrorCode.REFRESH_TOKEN_NOT_FOUND)
             }
 
             val newRt = "$sid.${generateRandomPart()}"
             tokenStore.save(sid, session.copy(tokenHash = hashToken(newRt)), 7L * 24 * 3600)
+            domainMetrics.recordRefreshTokenReissueSuccess()
 
             return jwtProvider.generateAccessToken(session.memberId, session.role) to newRt
         } finally {
@@ -110,6 +123,7 @@ class AuthCommandService(
         val sid = parseSid(rtToken)
         val session = tokenStore.find(sid) ?: return
         tokenStore.deleteSession(session.memberId, sid)
+        domainMetrics.recordLogout()
     }
 
     fun issueTokensForOAuth(memberId: Long, role: String = "USER"): Pair<String, String> {

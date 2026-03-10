@@ -2,6 +2,7 @@ package io.github.chan808.authtemplate.member.service
 
 import io.github.chan808.authtemplate.common.AuthException
 import io.github.chan808.authtemplate.common.ErrorCode
+import io.github.chan808.authtemplate.common.metrics.DomainMetrics
 import io.github.chan808.authtemplate.member.application.EmailVerificationService
 import io.github.chan808.authtemplate.member.application.MemberQueryService
 import io.github.chan808.authtemplate.member.domain.Member
@@ -26,12 +27,14 @@ class MemberQueryServiceTest {
     private val breachedPasswordChecker: BreachedPasswordChecker = mockk()
     private val passwordEncoder: PasswordEncoder = mockk()
     private val eventPublisher: ApplicationEventPublisher = mockk()
+    private val domainMetrics: DomainMetrics = mockk(relaxed = true)
     private val service = MemberQueryService(
         memberRepository,
         emailVerificationService,
         breachedPasswordChecker,
         passwordEncoder,
         eventPublisher,
+        domainMetrics,
     )
 
     @Test

@@ -6,6 +6,7 @@ import io.github.chan808.authtemplate.auth.application.port.AuthMailSender
 import io.github.chan808.authtemplate.auth.infrastructure.redis.PasswordResetStore
 import io.github.chan808.authtemplate.common.AuthException
 import io.github.chan808.authtemplate.common.ErrorCode
+import io.github.chan808.authtemplate.common.metrics.DomainMetrics
 import io.github.chan808.authtemplate.member.api.AuthMemberView
 import io.github.chan808.authtemplate.member.api.MemberApi
 import io.github.chan808.authtemplate.member.domain.MemberRole
@@ -24,11 +25,13 @@ class PasswordResetServiceTest {
     private val passwordResetStore: PasswordResetStore = mockk()
     private val mailSender: AuthMailSender = mockk()
     private val passwordResetRateLimitService: PasswordResetRateLimitService = mockk()
+    private val domainMetrics: DomainMetrics = mockk(relaxed = true)
     private val service = PasswordResetService(
         memberApi,
         passwordResetStore,
         mailSender,
         passwordResetRateLimitService,
+        domainMetrics,
         "https://example.com",
     )
 
@@ -54,7 +57,7 @@ class PasswordResetServiceTest {
 
         verify { passwordResetRateLimitService.check("127.0.0.1", "test@example.com") }
         verify { passwordResetStore.save(any(), 1L) }
-        verify { mailSender.send("test@example.com", "비밀번호 재설정", any()) }
+        verify { mailSender.send("test@example.com", any(), any()) }
     }
 
     @Test

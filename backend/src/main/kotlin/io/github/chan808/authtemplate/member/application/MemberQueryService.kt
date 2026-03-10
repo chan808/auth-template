@@ -2,6 +2,7 @@ package io.github.chan808.authtemplate.member.application
 
 import io.github.chan808.authtemplate.common.AuthException
 import io.github.chan808.authtemplate.common.ErrorCode
+import io.github.chan808.authtemplate.common.metrics.DomainMetrics
 import io.github.chan808.authtemplate.member.api.AuthMemberView
 import io.github.chan808.authtemplate.member.api.MemberApi
 import io.github.chan808.authtemplate.member.domain.Member
@@ -22,6 +23,7 @@ class MemberQueryService(
     private val breachedPasswordChecker: BreachedPasswordChecker,
     private val passwordEncoder: PasswordEncoder,
     private val eventPublisher: ApplicationEventPublisher,
+    private val domainMetrics: DomainMetrics,
 ) : MemberApi {
 
     private val log = LoggerFactory.getLogger(MemberQueryService::class.java)
@@ -41,12 +43,14 @@ class MemberQueryService(
         val member = memberRepository.findById(memberId)
             .orElseThrow { AuthException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID) }
         if (member.isOAuthAccount) {
+            domainMetrics.recordPasswordResetConfirmation("blocked_oauth_account")
             throw AuthException(ErrorCode.OAUTH_PASSWORD_RESET_NOT_ALLOWED)
         }
 
         breachedPasswordChecker.check(newRawPassword, member.email)
         member.changePassword(passwordEncoder.encode(newRawPassword) ?: error("PasswordEncoder returned null"))
         eventPublisher.publishEvent(PasswordChangedEvent(memberId))
+        domainMetrics.recordPasswordChange()
     }
 
     @Transactional

@@ -8,6 +8,7 @@ import io.github.chan808.authtemplate.auth.infrastructure.security.JwtProvider
 import io.github.chan808.authtemplate.auth.presentation.LoginRequest
 import io.github.chan808.authtemplate.common.AuthException
 import io.github.chan808.authtemplate.common.ErrorCode
+import io.github.chan808.authtemplate.common.metrics.DomainMetrics
 import io.github.chan808.authtemplate.member.api.AuthMemberView
 import io.github.chan808.authtemplate.member.api.MemberApi
 import io.github.chan808.authtemplate.member.domain.MemberRole
@@ -31,12 +32,14 @@ class AuthCommandServiceTest {
     private val jwtProvider: JwtProvider = mockk()
     private val tokenStore: TokenStore = mockk()
     private val loginRateLimitService: LoginRateLimitService = mockk()
+    private val domainMetrics: DomainMetrics = mockk(relaxed = true)
     private val authCommandService = AuthCommandService(
         memberApi,
         passwordEncoder,
         jwtProvider,
         tokenStore,
         loginRateLimitService,
+        domainMetrics,
     )
 
     private val memberView = AuthMemberView(

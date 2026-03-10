@@ -1,42 +1,31 @@
 spring:
+  application:
+    name: auth-template-backend
   profiles:
     active: local
-
   datasource:
-    # 환경변수 미설정 시 로컬 기본값 fallback: 실수로 운영 DB 연결 방지
-    # characterEncoding: Java charset 이름(UTF-8) 사용 — utf8mb4는 MySQL 내부 이름으로 JDBC에서 미지원
     url: ${DB_URL:jdbc:mysql://localhost:3306/authtemplate?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true}
-    # .env의 MYSQL_USER(user_chan) 사용 — root 계정은 운영 DB 접속에 사용하지 않는 것을 권장
     username: ${MYSQL_USER:root}
     password: ${MYSQL_PASSWORD:root_pass}
     driver-class-name: com.mysql.cj.jdbc.Driver
-
   jpa:
     hibernate:
-      # Flyway가 스키마를 단일 관리: validate로 ORM 기반 DDL 완전 차단
       ddl-auto: none
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
         format_sql: true
     show-sql: false
-
   flyway:
     enabled: true
     locations: classpath:db/migration
-    # V1·V2는 이미 수동 적용됨 — baseline으로 이력만 기록하고 재실행 방지
-    # 이후 V3+ 마이그레이션은 Flyway가 자동 적용
-    # DB를 새로 만든 경우: baseline-on-migrate를 false로 두어 V1부터 전체 마이그레이션 실행
-    # 기존 DB에 Flyway를 사후 도입할 때만 baseline-on-migrate: true, baseline-version: N 사용
     baseline-on-migrate: false
-
   data:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:redis_pass}
       timeout: 2000ms
-
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
@@ -50,21 +39,17 @@ spring:
             enable: true
 
 jwt:
-  # 운영 환경에서는 반드시 256비트 이상의 랜덤 시크릿으로 교체
   secret: ${JWT_SECRET:this-is-a-local-dev-secret-must-be-changed-in-production}
-  # AT 30분: 탈취 시 피해 최소화 / RT 7일: 사용자 경험 vs 보안 균형점
   access-token-expiry: 1800
   refresh-token-expiry: 604800
 
-# 로컬 HTTP 개발 환경 기본값 — 운영 시 각 환경변수로 오버라이드
 cookie:
-  secure: false # HTTPS 운영 환경에서는 COOKIE_SECURE=true
+  secure: false
 
 cors:
   allowed-origin: ${CORS_ALLOWED_ORIGIN:http://localhost:3000}
 
 app:
-  # 이메일 인증/비밀번호 재설정 링크의 base URL — 운영 시 APP_BASE_URL 환경변수로 오버라이드
   base-url: ${APP_BASE_URL:http://localhost:3000}
   http:
     client-ip:
@@ -72,13 +57,45 @@ app:
       trusted-proxies: []
   mail:
     from: ${MAIL_FROM:noreply@example.com}
-  # BreachedPasswordChecker: 비밀번호에 서비스 이름 포함 금지 시 사용
   name: ${APP_NAME:auth-template}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when_authorized
+      show-components: when_authorized
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+    mail:
+      enabled: false
+  prometheus:
+    metrics:
+      export:
+        descriptions: true
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      slo:
+        http.server.requests: 100ms,250ms,500ms,1s,3s
+
+info:
+  application:
+    name: ${spring.application.name}
+    stack: actuator,micrometer,prometheus,grafana
 
 springdoc:
   api-docs:
     path: /api-docs
-    # 운영 환경에서는 SWAGGER_ENABLED=false(기본값)로 API 명세 비노출 — 공격 표면 최소화
     enabled: ${SWAGGER_ENABLED:false}
   swagger-ui:
     path: /swagger-ui
