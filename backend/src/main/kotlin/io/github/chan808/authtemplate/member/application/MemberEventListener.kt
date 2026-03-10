@@ -13,17 +13,18 @@ class MemberEventListener(
     @Value("\${app.base-url}") private val baseUrl: String,
 ) {
 
-    // AFTER_COMMIT: 트랜잭션 롤백 시 메일 미발송 보장
+    // Send only after commit so a rolled-back signup never mails a live verification link.
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     fun onMemberRegistered(event: MemberRegisteredEvent) {
-        val verificationLink = "$baseUrl/api/auth/verify-email?token=${event.verificationToken}"
+        val verificationLink = "$baseUrl/verify-email?token=${event.verificationToken}"
         val body = """
-            이메일 인증을 완료하려면 아래 링크를 클릭해주세요.
+            |Complete your email verification using the link below:
+            |
+            |$verificationLink
+            |
+            |This link remains valid for 24 hours.
+        """.trimMargin()
 
-            $verificationLink
-
-            이 링크는 24시간 동안 유효합니다.
-        """.trimIndent()
-        mailSender.send(event.email, "이메일 인증", body)
+        mailSender.send(event.email, "Verify your email", body)
     }
 }

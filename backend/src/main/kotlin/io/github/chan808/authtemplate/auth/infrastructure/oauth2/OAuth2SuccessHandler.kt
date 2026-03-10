@@ -17,6 +17,7 @@ class OAuth2SuccessHandler(
     private val authService: AuthCommandService,
     private val oAuthCodeStore: OAuthCodeStore,
     @Value("\${app.base-url}") private val frontendBaseUrl: String,
+    @Value("\${app.default-locale:ko}") private val defaultLocale: String,
     @Value("\${cookie.secure:false}") private val cookieSecure: Boolean,
     @Value("\${jwt.refresh-token-expiry}") private val rtExpiry: Long,
 ) : AuthenticationSuccessHandler {
@@ -31,7 +32,6 @@ class OAuth2SuccessHandler(
         val oAuth2User = authentication.principal as AuthenticatedOAuth2User
         val (accessToken, rawRt) = authService.issueTokensForOAuth(oAuth2User.memberId)
 
-        // RT: HttpOnly 쿠키
         response.addCookie(Cookie("refresh_token", rawRt).apply {
             isHttpOnly = true
             secure = cookieSecure
@@ -40,11 +40,18 @@ class OAuth2SuccessHandler(
             setAttribute("SameSite", "Strict")
         })
 
-        // AT: one-time code로 프론트엔드에 전달 (URL 직접 노출 방지, TTL 60초)
         val code = UUID.randomUUID().toString()
         oAuthCodeStore.save(code, accessToken)
 
-        log.info("[AUTH] OAuth2 로그인 성공 memberId={} provider={}", oAuth2User.memberId, oAuth2User.provider)
-        response.sendRedirect("$frontendBaseUrl/auth/callback?code=$code")
+        val locale = resolveLocale(request)
+        log.info("[AUTH] OAuth2 login success memberId={} provider={} locale={}", oAuth2User.memberId, oAuth2User.provider, locale)
+        response.sendRedirect("$frontendBaseUrl/$locale/auth/callback?code=$code")
+    }
+
+    private fun resolveLocale(request: HttpServletRequest): String {
+        val session = request.getSession(false) ?: return defaultLocale
+        val locale = session.getAttribute(LocaleAwareOAuth2AuthorizationRequestResolver.SESSION_KEY) as? String
+        session.removeAttribute(LocaleAwareOAuth2AuthorizationRequestResolver.SESSION_KEY)
+        return locale ?: defaultLocale
     }
 }

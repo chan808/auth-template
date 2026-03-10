@@ -1,9 +1,13 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/shared/components/ui/button";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8080";
+const ENABLED_PROVIDERS = (process.env.NEXT_PUBLIC_OAUTH_PROVIDERS ?? "")
+  .split(",")
+  .map((provider) => provider.trim().toLowerCase())
+  .filter(Boolean);
 
 const providers = [
   { id: "google", label: "Google" },
@@ -13,10 +17,20 @@ const providers = [
 
 export default function SocialLoginButtons() {
   const t = useTranslations("auth.social");
+  const locale = useLocale();
+  const visibleProviders = providers.filter(({ id }) =>
+    ENABLED_PROVIDERS.includes(id),
+  );
 
   const handleLogin = (provider: string) => {
-    window.location.assign(`${BACKEND_URL}/oauth2/authorization/${provider}`);
+    const url = new URL(`${BACKEND_URL}/oauth2/authorization/${provider}`);
+    url.searchParams.set("locale", locale);
+    window.location.assign(url.toString());
   };
+
+  if (visibleProviders.length === 0) {
+    return null;
+  }
 
   return (
     <div className="space-y-2">
@@ -28,7 +42,7 @@ export default function SocialLoginButtons() {
           <span className="bg-card px-2 text-muted-foreground">{t("divider")}</span>
         </div>
       </div>
-      {providers.map(({ id, label }) => (
+      {visibleProviders.map(({ id, label }) => (
         <Button
           key={id}
           variant="outline"

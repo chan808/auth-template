@@ -1,8 +1,10 @@
 spring:
+  config:
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:application-local.yml[.yaml]
   application:
     name: auth-template-backend
-  profiles:
-    active: local
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/authtemplate?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true}
     username: ${MYSQL_USER:root}
@@ -39,18 +41,19 @@ spring:
             enable: true
 
 jwt:
-  secret: ${JWT_SECRET:this-is-a-local-dev-secret-must-be-changed-in-production}
+  secret: ${JWT_SECRET}
   access-token-expiry: 1800
   refresh-token-expiry: 604800
 
 cookie:
-  secure: false
+  secure: ${COOKIE_SECURE:false}
 
 cors:
   allowed-origin: ${CORS_ALLOWED_ORIGIN:http://localhost:3000}
 
 app:
   base-url: ${APP_BASE_URL:http://localhost:3000}
+  default-locale: ${APP_DEFAULT_LOCALE:ko}
   http:
     client-ip:
       trust-forwarded-headers: false

@@ -1,0 +1,2 @@
+jwt:
+  secret: test-jwt-secret-that-is-long-enough-for-hs256-signing

@@ -40,7 +40,7 @@ class PasswordResetService(
         val token = UUID.randomUUID().toString()
         passwordResetStore.save(token, member.id)
 
-        val resetLink = "$baseUrl/password-reset?token=$token"
+        val resetLink = "$baseUrl/reset-password?token=$token"
         val body = """
             |We received a password reset request for your account.
             |

@@ -95,10 +95,10 @@ class MemberControllerTest {
     }
 
     @Test
-    fun `invalid password format returns 400`() {
+    fun `too short password returns 400`() {
         mockMvc.post("/api/members") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"email":"test@example.com","password":"onlyletters123"}"""
+            content = """{"email":"test@example.com","password":"short"}"""
         }.andExpect {
             status { isBadRequest() }
         }

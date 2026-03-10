@@ -57,7 +57,13 @@ class PasswordResetServiceTest {
 
         verify { passwordResetRateLimitService.check("127.0.0.1", "test@example.com") }
         verify { passwordResetStore.save(any(), 1L) }
-        verify { mailSender.send("test@example.com", any(), any()) }
+        verify {
+            mailSender.send(
+                "test@example.com",
+                "Password reset",
+                match { it.contains("https://example.com/reset-password?token=") },
+            )
+        }
     }
 
     @Test

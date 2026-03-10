@@ -2,10 +2,12 @@ package io.github.chan808.authtemplate.auth.infrastructure.security
 
 import io.github.chan808.authtemplate.auth.infrastructure.oauth2.CustomOAuth2UserService
 import io.github.chan808.authtemplate.auth.infrastructure.oauth2.CustomOidcUserService
+import io.github.chan808.authtemplate.auth.infrastructure.oauth2.LocaleAwareOAuth2AuthorizationRequestResolver
 import io.github.chan808.authtemplate.auth.infrastructure.oauth2.OAuth2FailureHandler
 import io.github.chan808.authtemplate.auth.infrastructure.oauth2.OAuth2SuccessHandler
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpMethod
@@ -14,6 +16,8 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository
+import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver
+import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter
@@ -44,6 +48,9 @@ class SecurityConfig(
 
     @Autowired(required = false)
     private val oauth2FailureHandler: OAuth2FailureHandler? = null
+
+    @Autowired(required = false)
+    private val oauth2AuthorizationRequestResolver: OAuth2AuthorizationRequestResolver? = null
 
     @Bean
     fun filterChain(http: HttpSecurity): SecurityFilterChain {
@@ -81,7 +88,12 @@ class SecurityConfig(
             oauth2FailureHandler != null
         ) {
             http.oauth2Login { oauth2 ->
-                oauth2.authorizationEndpoint { it.baseUri("/oauth2/authorization") }
+                oauth2.authorizationEndpoint {
+                    it.baseUri("/oauth2/authorization")
+                    oauth2AuthorizationRequestResolver?.let { resolver ->
+                        it.authorizationRequestResolver(resolver)
+                    }
+                }
                 oauth2.redirectionEndpoint { it.baseUri("/login/oauth2/code/*") }
                 oauth2.userInfoEndpoint {
                     it.userService(customOAuth2UserService)
@@ -94,6 +106,17 @@ class SecurityConfig(
 
         return http.build()
     }
+
+    @Bean
+    @ConditionalOnBean(ClientRegistrationRepository::class)
+    fun oauth2AuthorizationRequestResolver(
+        clientRegistrationRepository: ClientRegistrationRepository,
+        @Value("\${app.default-locale:ko}") defaultLocale: String,
+    ): OAuth2AuthorizationRequestResolver =
+        LocaleAwareOAuth2AuthorizationRequestResolver(
+            delegate = DefaultOAuth2AuthorizationRequestResolver(clientRegistrationRepository, "/oauth2/authorization"),
+            defaultLocale = defaultLocale,
+        )
 
     @Bean
     fun corsConfigurationSource(): CorsConfigurationSource {

@@ -1,379 +1,254 @@
 # Auth Template
 
-![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.0.3-6DB33F?style=flat-square&logo=springboot&logoColor=white)
-![Kotlin](https://img.shields.io/badge/Kotlin-2.2.21-7F52FF?style=flat-square&logo=kotlin&logoColor=white)
-![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=nextdotjs&logoColor=white)
-![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?style=flat-square&logo=mysql&logoColor=white)
-![Redis](https://img.shields.io/badge/Redis-7-DC382D?style=flat-square&logo=redis&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)
+인증과 회원 관리를 매번 처음부터 다시 만들지 않기 위해 만든 풀스택 템플릿입니다.  
+단순 로그인 예제가 아니라, 실제 서비스에서 자주 마주치는 인증 보안 이슈와 운영 포인트를 처음부터 포함하는 것을 목표로 구성했습니다.
 
-새 프로젝트를 시작할 때마다 반복되는 인증 작업을 줄이기 위해 만든 풀스택 인증 템플릿입니다.
+백엔드는 `Spring Boot + Spring Security + JPA + Redis`, 프론트엔드는 `Next.js + React + TypeScript` 기반입니다.  
+회원가입, 로그인, 이메일 인증, 비밀번호 재설정, OAuth2 로그인, 세션 무효화, Rate Limiting, 관측성까지 한 번에 시작할 수 있습니다.
 
-JWT 기반 Stateless 인증의 흔한 취약점(XSS, CSRF, RT 탈취, Race Condition)을 방어하는 패턴을 직접 구현하면서, 각 결정의 이유와 트레이드오프를 이해하는 데 집중했습니다.
+## 핵심 포인트
 
----
-
-## 목차
-
-- [기술 스택](#기술-스택)
-- [아키텍처 개요](#아키텍처-개요)
-- [보안 기능](#보안-기능)
-- [설계 결정 노트](#설계-결정-노트)
-- [테스트 전략](#테스트-전략)
-- [API](#api)
-- [로컬 개발 환경 설정](#로컬-개발-환경-설정)
-- [환경 변수](#환경-변수)
-- [프로젝트 구조](#프로젝트-구조)
-
----
+- `JWT Access Token + HttpOnly Refresh Token` 구조
+- Redis 기반 세션 인덱스와 Refresh Token 저장소
+- `/reissue` 동시 요청 충돌 방지
+- 로그인, 회원가입, 비밀번호 재설정 Rate Limiting
+- OAuth2 로그인과 일반 로그인 정책 분리
+- 비밀번호 변경/회원 탈퇴 후 전체 세션 무효화
+- Spring Boot Actuator + Micrometer + Prometheus + Grafana 관측 환경
+- WebMvcTest, 단위 테스트, Testcontainers 기반 통합 테스트 분리
+- Next.js 프론트와 분리된 구조로 실제 서비스에 가까운 흐름 구성
 
 ## 기술 스택
 
-### Backend (`backend/`)
+### Backend
 
-| 분류 | 기술 |
-|------|------|
-| Language / Runtime | Kotlin 2.2.21 / JDK 21 |
-| Framework | Spring Boot 4.0.3, Spring Security 7.x |
-| Database | MySQL 8.0 + Flyway |
-| Cache / Session | Redis 7 |
-| JWT | jjwt 0.12.6 |
-| API Docs | springdoc-openapi 3.0.1 (Swagger UI) |
-| Testing | MockK 1.14.2, Testcontainers 2.x |
-| Infrastructure | Docker Compose |
-
-### Frontend (`frontend/`)
-
-| 분류 | 기술 |
-|------|------|
-| Framework | Next.js 16 + React 19 |
-| Language | TypeScript |
-| i18n | next-intl 4.8.3 (ko / en) |
-| State | Zustand v5 |
-| HTTP | Axios (401 자동 재발급 인터셉터) |
-| UI | shadcn/ui + Tailwind CSS |
-| Architecture | FSD (Feature-Sliced Design) |
-
----
-
-## 아키텍처 개요
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     Frontend (Next.js)                      │
-│                                                             │
-│  Access Token  → Zustand (JS 메모리)   ← XSS 방어           │
-│  Refresh Token → HttpOnly Cookie       ← JS 접근 불가        │
-│                                                             │
-│  401 발생 시 Axios interceptor가 /reissue 자동 호출 후 재시도 │
-└───────────────────────────┬─────────────────────────────────┘
-                            │ HTTPS
-┌───────────────────────────▼─────────────────────────────────┐
-│                   Backend (Spring Boot)                     │
-│                                                             │
-│  Spring Security Filter                                     │
-│    └─ JWT 검증 → sid 추출 → Redis RT:{sid} 존재 확인         │
-│                                                             │
-│  Redis                                                      │
-│    ├─ RT:{sid}           세션 화이트리스트 (HMAC-SHA256 해시) │
-│    ├─ LOCK:REISSUE:{sid} 동시 재발급 Race Condition 방어      │
-│    └─ RATE:{type}:{key}  Rate Limiting (Lua script 원자성)   │
-│                                                             │
-│  MySQL (Flyway 마이그레이션)                                  │
-│    └─ members                                               │
-└─────────────────────────────────────────────────────────────┘
-```
-
-**핵심 설계 원칙**
-
-- **Stateless JWT + 서버 측 세션 화이트리스트**: 순수 Stateless JWT는 로그아웃 후에도 토큰이 유효하다는 문제가 있습니다. Redis에 `RT:{sid}` 키를 두어 로그아웃 시 즉시 무효화하는 방식으로 이 문제를 해결했습니다. AT는 30분 수명으로 Redis 조회 없이 검증하고, 세션 유효성만 Redis로 확인합니다.
-- **트랜잭션 커밋 후 이메일 발송**: `@TransactionalEventListener(AFTER_COMMIT)` + `@Async` 조합으로 DB 롤백 시 이메일이 발송되는 불일치를 방지합니다.
-- **FSD(Feature-Sliced Design)**: 프론트엔드를 `app/`(라우팅), `features/`(도메인), `shared/`(공용)으로 계층화하여 도메인 간 의존성을 명확히 통제합니다.
-
----
-
-## 보안 기능
-
-### 1. JWT 토큰 전략
-
-| 항목 | Access Token | Refresh Token |
-|------|-------------|---------------|
-| 저장 위치 | Zustand (JS 메모리) | HttpOnly Cookie |
-| 쿠키 경로 | — | `path=/api/auth` |
-| 유효 기간 | 30분 | Sliding 7일 / 절대 최대 30일 |
-
-- AT를 메모리에만 보관하여 XSS로 인한 토큰 탈취를 차단합니다.
-- RT 쿠키 `path=/api/auth` 설정으로 다른 API 요청에 쿠키가 첨부되지 않도록 범위를 제한합니다.
-
-### 2. 세션 화이트리스트
-
-RT 형식: `{sid}.{base64url(SecureRandom 32B)}`
-
-Redis에는 RT 원문 대신 **HMAC-SHA256 해시**만 저장합니다. 재발급 시 RT를 항상 새 값으로 교체(회전)하며, 만약 교체된 구 RT로 재발급이 시도되면 해시 불일치로 탈취 시도로 간주하고 해당 세션을 즉시 무효화합니다.
-
-### 3. Race Condition 방어
-
-여러 탭에서 동시에 토큰 만료가 발생하면 `/reissue` 요청이 중복으로 들어옵니다. Redis `SETNX LOCK:REISSUE:{sid}` (TTL 3초) 분산 락으로 첫 번째 요청만 처리하고, 나머지는 `409 Conflict`로 응답합니다. 클라이언트는 409를 받으면 잠시 후 재시도하여 새 AT를 얻습니다.
-
-### 4. Rate Limiting
-
-Redis Lua Script로 카운터 증가를 원자적으로 처리하여 동시 요청에서도 정확한 제한을 보장합니다.
-
-| 대상 | 한도 | 기준 |
-|------|------|------|
-| 로그인 | 20회 / 1시간 | IP |
-| 로그인 | 10회 / 15분 | 이메일 |
-| 회원가입 | 5회 / 1시간 | IP |
-
-한도 초과 시 `429 Too Many Requests` + `Retry-After` 헤더를 반환합니다.
-
-### 5. CSRF 이중 방어
-
-- RT 쿠키 `SameSite=Strict`: 타 사이트에서의 요청에 쿠키가 첨부되지 않습니다.
-- `/reissue`, `/logout`에 `X-CSRF-GUARD` 커스텀 헤더 검증: 브라우저는 크로스 오리진 요청에 임의 헤더를 추가할 수 없으므로, 이 헤더가 없는 요청은 거부합니다.
-
-### 6. NIST SP 800-63B 비밀번호 정책
-
-단순 복잡도 규칙 대신 NIST 권고안을 따릅니다.
-
-- **유출 비밀번호 차단**: [HaveIBeenPwned API](https://haveibeenpwned.com/API/v3#PwnedPasswords)를 k-익명성 모델(SHA-1 prefix 5자리)로 조회합니다. 전체 해시를 외부로 전송하지 않아 프라이버시를 보호합니다.
-- **컨텍스트 단어 차단**: 서비스명, 이메일 로컬파트 등 예측 가능한 단어를 비밀번호에 포함할 수 없습니다.
-- **비밀번호 변경/재설정 시 전체 세션 무효화**: 탈취된 세션을 즉시 강제 종료합니다.
-- **이메일 인증 필수**: 미인증 계정은 로그인이 불가합니다.
-
-### 7. 로그 보안
-
-- **MDC 요청 추적**: 모든 요청에 `requestId`와 `clientIp`를 MDC에 삽입합니다. 분산 환경에서도 하나의 요청 흐름을 로그로 추적할 수 있습니다.
-- **Log Forging 방어**: 외부에서 유입된 값(헤더, 파라미터)의 개행 문자를 치환하여 로그 위조 공격을 방어합니다.
-- **이메일 마스킹**: 로그에 이메일이 기록될 때 `t***@example.com` 형식으로 자동 마스킹합니다.
-
-### 8. OAuth2 소셜 로그인
-
-Google, Naver, Kakao 소셜 로그인을 지원합니다.
-
-AT를 리다이렉트 URL에 포함하면 브라우저 히스토리에 남는 위험이 있으므로, **일회성 코드(UUID) 방식**을 사용합니다. 백엔드가 AT를 Redis에 60초 TTL로 저장하고, 프론트엔드가 코드를 AT로 교환한 뒤 코드는 즉시 삭제됩니다.
-
----
-
-## 설계 결정 노트
-
-기능 구현 과정에서 선택의 이유가 될 만한 결정들을 정리했습니다.
-
-### Flyway Baseline 전략
-
-처음부터 Flyway를 도입하지 않고 수동으로 테이블을 생성한 뒤 나중에 마이그레이션을 추가하는 상황은 실무에서 자주 마주칩니다. 이 프로젝트에서도 동일한 상황이 발생했습니다.
-
-이미 존재하는 테이블에 Flyway를 적용하면 V1, V2 스크립트가 재실행되어 `Table already exists` 오류가 발생합니다. `baseline-on-migrate: true` + `baseline-version: 2` 설정으로 기존 스키마를 V2 시점으로 기록하고, V3부터만 자동 적용되도록 처리했습니다. 이후 V3, V4 스크립트는 Flyway가 정상적으로 관리합니다.
-
-### OAuth 계정과 로컬 계정의 UX 분리
-
-소셜 로그인으로 가입한 계정은 비밀번호가 없습니다. 마이페이지에서 비밀번호 변경 폼을 그대로 노출하면 의미 없는 UI이거나 오류를 유발합니다.
-
-`GET /api/members/me` 응답에 `provider` 필드를 포함시켜 프론트엔드가 계정 유형을 판별하도록 했습니다. 소셜 계정이면 비밀번호 변경 섹션 자체를 렌더링하지 않고, 같은 이메일로 다른 소셜 제공자로 가입을 시도하면 명시적인 오류 메시지로 안내합니다.
-
-### 비밀번호 없는 계정의 DB 설계
-
-OAuth 계정은 비밀번호가 없으므로 `password` 컬럼을 `NULL` 허용으로 변경했습니다. `provider_key` 컬럼은 `GENERATED ALWAYS AS (IF(provider IS NOT NULL, CONCAT(provider, ':', provider_id), NULL))` 생성 컬럼으로, MySQL UNIQUE 인덱스가 NULL을 중복으로 보지 않는 특성을 활용해 로컬 계정은 여러 개 허용하면서 소셜 계정의 (provider, provider_id) 조합은 유일하게 강제합니다.
-
-### 이메일 열거 공격(Enumeration Attack) 방어
-
-비밀번호 재설정 요청 시, 해당 이메일이 존재하지 않더라도 항상 "메일을 발송했습니다"로 응답합니다. 이메일 존재 여부를 외부에 노출하지 않습니다.
-
----
-
-## 테스트 전략
-
-단위 테스트 → 슬라이스 테스트 → 통합 테스트 3계층으로 구성했습니다.
-
-### 단위 테스트 (MockK)
-
-Spring Context 없이 순수 로직을 검증합니다.
-
-| 대상 | 주요 검증 항목 |
-|------|--------------|
-| `AuthService` | 로그인 성공/실패, 재발급 Race Condition, RT 해시 불일치 시 세션 즉시 무효화 |
-| `MemberService` | 이메일 중복 가입, 이메일 소문자 정규화, 존재하지 않는 회원 조회 |
-| `EmailVerificationService` | 인증 토큰 저장 및 이벤트 발행, 이미 인증된 이메일 재인증 방지 |
-| `PasswordResetService` | 미가입 이메일 요청 시 200 반환 (열거 공격 방지), 재설정 후 전체 세션 무효화 |
-| `JwtProvider` | AT 생성/검증, 변조 토큰, 만료 토큰 |
-
-### 슬라이스 테스트 (`@WebMvcTest`)
-
-실제 `SecurityConfig`를 임포트하여 Spring Security 필터 체인이 완전히 활성화된 상태에서 HTTP 레이어를 검증합니다. JWT 인증 흐름, CSRF 헤더 검증, 쿠키 설정, `ProblemDetail` 응답 구조를 실제 HTTP 요청/응답으로 확인합니다.
-
-| 대상 | 주요 검증 항목 |
-|------|--------------|
-| `AuthController` | RT HttpOnly 쿠키 발급, X-CSRF-GUARD 누락 시 400, Rate Limit 시 Retry-After 헤더 |
-| `MemberController` | 인증 필터 동작(미인증 401), 탈퇴 시 RT 쿠키 maxAge=0, Bean Validation 서비스 전 차단 |
-
-### 통합 테스트 (Testcontainers + 실제 Redis)
-
-Redis 컨테이너를 띄워 실제 명령어 동작을 검증합니다. 단위 테스트로는 확인할 수 없는 TTL 설정, SETNX 원자성, Lua 스크립트 동작을 직접 확인합니다.
-
-| 대상 | 주요 검증 항목 |
-|------|--------------|
-| `RefreshTokenStore` | TTL 실제 설정 확인, SETNX 락 중복 방지, 멀티 세션 Lua 원자 삭제 |
-| `RateLimiter` | 카운트 누적 정확성, TTL 자동 설정(INCR 후 EXPIRE 누락 방지), 만료 후 카운트 초기화 |
-| `contextLoads` | 전체 스프링 컨텍스트 로딩 검증 (MySQL + Redis Testcontainers) |
-
----
-
-## API
-
-### 인증 (`/api/auth`)
-
-| Method | Endpoint | 설명 |
-|--------|----------|------|
-| POST | `/api/auth/login` | 로그인 (AT 반환 + RT 쿠키 설정) |
-| POST | `/api/auth/reissue` | 토큰 재발급 (RT 쿠키 사용) |
-| POST | `/api/auth/logout` | 로그아웃 (세션 무효화 + 쿠키 만료) |
-| GET | `/api/auth/verify-email?token=` | 이메일 인증 |
-| POST | `/api/auth/password-reset/request` | 비밀번호 재설정 이메일 발송 |
-| POST | `/api/auth/password-reset/confirm` | 비밀번호 재설정 (토큰 + 새 비밀번호) |
-| GET | `/api/auth/oauth2/token?code=` | OAuth 일회성 코드 → AT 교환 |
-
-### 회원 (`/api/members`)
-
-| Method | Endpoint | 설명 |
-|--------|----------|------|
-| POST | `/api/members` | 회원가입 |
-| GET | `/api/members/me` | 내 정보 조회 |
-| PATCH | `/api/members/me/profile` | 닉네임 수정 |
-| PATCH | `/api/members/me/password` | 비밀번호 변경 |
-| DELETE | `/api/members/me` | 회원 탈퇴 (세션 정리 + 쿠키 만료) |
-
-### 프론트엔드 페이지
-
-| 경로 | 설명 |
-|------|------|
-| `/login` | 로그인 (소셜 로그인 버튼 포함) |
-| `/signup` | 회원가입 |
-| `/forgot-password` | 비밀번호 재설정 요청 |
-| `/verify-email` | 이메일 인증 처리 |
-| `/reset-password` | 비밀번호 재설정 |
-| `/dashboard` | 마이페이지 (프로필 수정, 비밀번호 변경, 탈퇴) |
-| `/auth/callback` | OAuth 소셜 로그인 콜백 처리 |
-
----
-
-## 로컬 개발 환경 설정
-
-### 사전 요구사항
-
-- Docker & Docker Compose
+- Kotlin
 - JDK 21
-- Node.js 20+, pnpm
+- Spring Boot 4
+- Spring Security
+- Spring Data JPA
+- MySQL
+- Redis
+- Flyway
+- OAuth2 Client
+- Spring Modulith
+- Micrometer
+- Prometheus
+- MockK
+- Testcontainers
+- ArchUnit
+
+### Frontend
+
+- Next.js 16
+- React 19
+- TypeScript
+- next-intl
+- TanStack Query
+- Zustand
+- Axios
+- Tailwind CSS 4
+- shadcn/ui
+
+### Infra
+
+- Docker Compose
+- Nginx reverse proxy config
+- Prometheus
+- Grafana
+
+## 아키텍처 요약
+
+### 인증 흐름
+
+- Access Token은 프론트 메모리에만 저장합니다.
+- Refresh Token은 `HttpOnly` 쿠키로만 저장합니다.
+- Refresh Token 본문은 서버에 평문으로 저장하지 않고 해시만 저장합니다.
+- Redis에는 `RT:{sid}`와 회원별 세션 인덱스를 함께 저장해 단일 세션 무효화와 전체 세션 무효화를 모두 처리합니다.
+
+### 보안 설계
+
+- 기본 클라이언트 IP는 `remoteAddr`를 사용하고, 신뢰 프록시 설정이 있을 때만 forwarded header를 해석합니다.
+- 로그인, 회원가입, 비밀번호 재설정 요청은 Redis Lua 기반 Rate Limiting으로 보호합니다.
+- OAuth 계정은 로컬 비밀번호 재설정 대상에서 제외해 정책 충돌을 막았습니다.
+- 비밀번호 변경과 회원 탈퇴 후 세션 무효화는 `AFTER_COMMIT` 이벤트로 처리해 DB 롤백과 Redis 상태가 어긋나지 않도록 했습니다.
+- JWT secret이 없으면 애플리케이션이 시작되지 않도록 fail-fast로 구성했습니다.
+
+### 관측성
+
+- `/actuator/health`, `/actuator/info`, `/actuator/prometheus`만 외부 노출합니다.
+- HTTP 요청 수, 응답 시간 히스토그램, JVM/HikariCP 메트릭을 기본 수집합니다.
+- 로그인 성공/실패, 토큰 재발급 실패 원인, 비밀번호 재설정, 회원가입, 세션 무효화 같은 도메인 이벤트를 커스텀 메트릭으로 기록합니다.
+- Grafana 대시보드와 Prometheus datasource를 provisioning으로 자동 구성합니다.
+
+## 디렉터리 구조
+
+```text
+auth-template/
+├─ backend/
+│  ├─ src/main/kotlin/.../auth
+│  ├─ src/main/kotlin/.../member
+│  ├─ src/main/kotlin/.../common
+│  ├─ src/main/resources/db/migration
+│  ├─ monitoring/
+│  ├─ docker-compose.yml
+│  ├─ .env.example
+│  └─ HELP.md
+├─ frontend/
+│  ├─ src/app
+│  ├─ src/features
+│  ├─ src/shared
+│  ├─ messages
+│  └─ .env.example
+├─ infra/
+│  └─ nginx/
+├─ 이력서를 위한 정보.md
+└─ 포트폴리오를 위한 정보.md
+```
+
+## 주요 기능
+
+### 회원
+
+- 이메일 기반 회원가입
+- 이메일 인증 완료 후 로그인 허용
+- 내 정보 조회
+- 프로필 수정
+- 비밀번호 변경
+- 회원 탈퇴
+
+### 인증
+
+- 이메일/비밀번호 로그인
+- Access Token 재발급
+- 로그아웃
+- 비밀번호 재설정 메일 발송
+- 비밀번호 재설정 완료
+
+### OAuth2
+
+- Google 로그인
+- OAuth 계정과 일반 계정의 인증 정책 분리
+- 프론트 콜백 페이지에서 백엔드와 토큰 교환
+
+## 로컬 실행
 
 ### 1. 인프라 실행
 
-Docker Compose로 MySQL 8과 Redis 7을 한 번에 실행합니다.
+`backend/.env.example`을 `backend/.env`로 복사한 뒤 값을 채웁니다.
 
 ```bash
-cd auth-template/backend
+cd backend
+docker compose up -d mysql redis minio
+```
 
-# 환경 변수 파일 생성
-cp .env.example .env
+관측 스택까지 함께 띄우려면:
 
-# MySQL + Redis 실행
-docker compose up -d
+```bash
+docker compose --profile observability up -d prometheus grafana
 ```
 
 ### 2. 백엔드 실행
 
+`backend/src/main/resources/application-local.example.yml`을 `application-local.yml`로 복사한 뒤 메일/OAuth 값을 채웁니다.
+
+필수 설정:
+
+- `JWT_SECRET`
+- 메일 계정 정보
+- 필요 시 OAuth client 정보
+
 ```bash
-# application-local.yml에 이메일(Gmail 앱 비밀번호), OAuth 키 등 입력
-# 이후 실행
-./gradlew bootRun
+cd backend
+./gradlew bootRun --args='--spring.profiles.active=local'
 ```
 
-로컬 `application-local.yml`이 `.env`가 아닌 YAML 파일로 민감 정보를 관리하는 이유: `./gradlew bootRun`은 Docker Compose와 달리 `.env` 파일을 자동으로 읽지 않습니다.
+### 3. 프론트 실행
 
-> Swagger UI: `http://localhost:8080/swagger-ui/index.html`
-> (로컬에서는 `SWAGGER_ENABLED=true`로 활성화 필요)
-
-### 3. 프론트엔드 실행
+`frontend/.env.example`을 `frontend/.env.local`로 복사합니다.
 
 ```bash
-cd auth-template/frontend
+cd frontend
 pnpm install
 pnpm dev
 ```
 
-> `http://localhost:3000`
+기본 주소:
 
-> **주의**: 로컬 HTTP 환경에서 RT 쿠키가 전송되려면 백엔드 `application-local.yml`에 `cookie.secure: false`가 설정되어 있어야 합니다.
-
----
+- Frontend: `http://localhost:3000`
+- Backend: `http://localhost:8080`
+- Prometheus: `http://localhost:9090`
+- Grafana: `http://localhost:3001`
 
 ## 환경 변수
 
-### Backend (`.env` + `application-local.yml`)
+### Backend
 
-| 변수명 | 설명 | 예시 |
-|--------|------|------|
-| `DB_URL` | MySQL JDBC URL | `jdbc:mysql://localhost:3306/authtemplate?...` |
-| `MYSQL_USER` | DB 사용자명 | `authuser` |
-| `MYSQL_PASSWORD` | DB 비밀번호 | — |
-| `REDIS_HOST` | Redis 호스트 | `localhost` |
-| `REDIS_PASSWORD` | Redis 비밀번호 | — |
-| `JWT_SECRET` | JWT 서명 키 (256비트 이상, 운영 필수 교체) | — |
-| `MAIL_USERNAME` | 발신자 이메일 | `your@gmail.com` |
-| `MAIL_PASSWORD` | Gmail 앱 비밀번호 | `xxxx xxxx xxxx xxxx` |
-| `CORS_ALLOWED_ORIGIN` | 허용 Origin | `http://localhost:3000` |
-| `COOKIE_SECURE` | HTTPS 전용 쿠키 (운영: `true`) | `false` |
-| `APP_BASE_URL` | 이메일 링크 Base URL | `http://localhost:3000` |
-| `SWAGGER_ENABLED` | Swagger UI 활성화 | `false` |
-| `GOOGLE_CLIENT_ID` | Google OAuth 클라이언트 ID | — |
-| `NAVER_CLIENT_ID` | Naver OAuth 클라이언트 ID | — |
-| `KAKAO_CLIENT_ID` | Kakao OAuth 클라이언트 ID | — |
+주요 값:
 
----
+- `JWT_SECRET`
+- `DB_URL`
+- `MYSQL_USER`
+- `MYSQL_PASSWORD`
+- `REDIS_PASSWORD`
+- `MAIL_USERNAME`
+- `MAIL_PASSWORD`
+- `APP_BASE_URL`
+- `APP_DEFAULT_LOCALE`
+- `CORS_ALLOWED_ORIGIN`
+- `COOKIE_SECURE`
+- `SWAGGER_ENABLED`
 
-## 프로젝트 구조
+예제 파일:
 
-```
-auth-template/
-├── infra/
-│   └── nginx/
-│       ├── nginx.conf              # worker, upstream, HTTP→HTTPS 리다이렉트
-│       └── conf.d/
-│           └── auth-template.conf  # SSL, 보안 헤더, X-Forwarded-For 스푸핑 방지, 라우팅
-│
-├── backend/
-│   ├── src/main/kotlin/.../authtemplate/
-│   │   ├── auth/               # JWT, 세션, RT, OAuth2, 비밀번호 재설정
-│   │   ├── member/             # 회원가입, 정보 수정, 이메일 인증, 탈퇴
-│   │   └── common/             # Security 설정, 예외, 응답, MDC, Rate Limiting
-│   ├── src/main/resources/
-│   │   ├── db/migration/       # Flyway V1~V4 SQL
-│   │   └── application.yml
-│   ├── docker-compose.yml
-│   └── .env.example
-│
-└── frontend/
-    ├── src/
-    │   ├── app/[locale]/
-    │   │   ├── (auth)/         # login, signup, forgot-password, verify-email, reset-password
-    │   │   ├── (main)/         # dashboard (인증 가드 레이아웃)
-    │   │   └── auth/callback/  # OAuth 콜백
-    │   ├── features/
-    │   │   ├── auth/           # 로그인, 로그아웃, 토큰 관리, 소셜 로그인
-    │   │   └── member/         # 프로필, 비밀번호 변경, 탈퇴
-    │   └── shared/
-    │       ├── api/            # Axios 인스턴스 + 401 재발급 인터셉터
-    │       └── components/ui/  # shadcn/ui 컴포넌트
-    └── messages/
-        ├── ko.json
-        └── en.json
+- [backend/.env.example](backend/.env.example)
+- [backend/src/main/resources/application-local.example.yml](backend/src/main/resources/application-local.example.yml)
+
+### Frontend
+
+주요 값:
+
+- `NEXT_PUBLIC_API_URL`
+- `NEXT_PUBLIC_BACKEND_URL`
+- `NEXT_PUBLIC_OAUTH_PROVIDERS`
+
+예제 파일:
+
+- [frontend/.env.example](frontend/.env.example)
+
+## 테스트
+
+빠른 확인:
+
+```bash
+cd backend
+./gradlew test
 ```
 
----
+컨테이너가 필요한 통합 테스트:
 
-## 사용 안내
+```bash
+cd backend
+./gradlew integrationTest
+```
 
-Fork 후 새 프로젝트의 시작점으로 자유롭게 사용하세요.
-보안 이슈나 개선 제안은 Issue로 남겨주시면 반영하겠습니다.
+프론트 검사:
 
----
+```bash
+cd frontend
+pnpm lint
+pnpm build
+```
 
-<p align="center">MIT License</p>
+## 이 템플릿이 어필되는 이유
+
+- 인증을 단순 CRUD가 아니라 보안 경계와 세션 전략까지 포함해 설계했습니다.
+- OAuth, JWT, Redis, 메일 인증, CSRF 대응, 레이스 컨디션 대응처럼 실무에서 자주 부딪히는 주제를 한 프로젝트 안에 담았습니다.
+- 테스트를 계층별로 나눠 빠른 피드백과 실제 인프라 검증을 동시에 챙겼습니다.
+- 관측성까지 포함해 “동작하는 코드”를 넘어서 “운영 가능한 서비스 시작점”에 가깝게 만들었습니다.
+
+## 문서
+
+- 백엔드 관측 가이드: [backend/HELP.md](backend/HELP.md)
+- 이력서용 정리: [이력서를 위한 정보.md](이력서를%20위한%20정보.md)
+- 포트폴리오용 정리: [포트폴리오를 위한 정보.md](포트폴리오를%20위한%20정보.md)

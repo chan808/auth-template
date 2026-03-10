@@ -39,6 +39,7 @@ class AuthTemplateApplicationTests {
             registry.add("spring.data.redis.password") { "" }
             registry.add("spring.jpa.hibernate.ddl-auto") { "create-drop" }
             registry.add("spring.flyway.enabled") { "false" }
+            registry.add("jwt.secret") { "integration-test-jwt-secret-that-is-long-enough-for-hs256" }
         }
     }
 

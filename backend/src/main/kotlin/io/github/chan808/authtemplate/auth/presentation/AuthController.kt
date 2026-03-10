@@ -48,11 +48,12 @@ class AuthController(
 
     @PostMapping("/reissue")
     fun reissue(
-        @CookieValue("refresh_token") rtToken: String,
+        @CookieValue("refresh_token", required = false) rtToken: String?,
         @RequestHeader("X-CSRF-GUARD") csrfGuard: String,
         response: jakarta.servlet.http.HttpServletResponse,
     ): ResponseEntity<ApiResponse<TokenResponse>> {
-        val (at, newRt) = authCommandService.reissue(rtToken)
+        val refreshToken = rtToken ?: throw AuthException(ErrorCode.REFRESH_TOKEN_NOT_FOUND)
+        val (at, newRt) = authCommandService.reissue(refreshToken)
         response.addHeader(HttpHeaders.SET_COOKIE, buildRtCookie(newRt, rtTtl).toString())
         return ResponseEntity.ok(ApiResponse.of(TokenResponse(at)))
     }
