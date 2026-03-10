@@ -1,4 +1,4 @@
-package io.github.chan808.authtemplate.auth.repository
+package io.github.chan808.authtemplate.auth.infrastructure.redis
 
 import io.github.chan808.authtemplate.auth.domain.RefreshTokenSession
 import io.github.chan808.authtemplate.auth.infrastructure.redis.RefreshTokenStore

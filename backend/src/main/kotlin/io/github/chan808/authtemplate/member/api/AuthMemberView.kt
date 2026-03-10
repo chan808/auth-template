@@ -1,12 +1,10 @@
 package io.github.chan808.authtemplate.member.api
 
-import io.github.chan808.authtemplate.member.domain.MemberRole
-
 data class AuthMemberView(
     val id: Long,
     val email: String,
     val encodedPassword: String?,
-    val role: MemberRole,
+    val role: String,
     val emailVerified: Boolean,
     val provider: String?,
 ) {

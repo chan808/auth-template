@@ -2,6 +2,8 @@ package io.github.chan808.authtemplate.member.application
 
 import io.github.chan808.authtemplate.common.ErrorCode
 import io.github.chan808.authtemplate.common.MemberException
+import io.github.chan808.authtemplate.common.maskEmail
+import io.github.chan808.authtemplate.common.metrics.DomainMetrics
 import io.github.chan808.authtemplate.member.domain.event.MemberRegisteredEvent
 import io.github.chan808.authtemplate.member.infrastructure.persistence.MemberRepository
 import io.github.chan808.authtemplate.member.infrastructure.redis.EmailVerificationStore
@@ -16,6 +18,8 @@ class EmailVerificationService(
     private val memberRepository: MemberRepository,
     private val emailVerificationStore: EmailVerificationStore,
     private val eventPublisher: ApplicationEventPublisher,
+    private val resendRateLimitService: EmailVerificationResendRateLimitService,
+    private val domainMetrics: DomainMetrics,
 ) {
     private val log = LoggerFactory.getLogger(EmailVerificationService::class.java)
 
@@ -24,6 +28,31 @@ class EmailVerificationService(
         val token = UUID.randomUUID().toString()
         emailVerificationStore.save(token, memberId, ttlSeconds = 24L * 3600)
         eventPublisher.publishEvent(MemberRegisteredEvent(email, token))
+    }
+
+    fun resend(email: String, ip: String) {
+        val normalizedEmail = email.lowercase().trim()
+        resendRateLimitService.check(ip, normalizedEmail)
+
+        val member = memberRepository.findByEmail(normalizedEmail) ?: run {
+            domainMetrics.recordEmailVerificationResend("ignored_unknown_email")
+            return
+        }
+
+        if (member.emailVerified) {
+            domainMetrics.recordEmailVerificationResend("ignored_verified")
+            return
+        }
+
+        if (member.isOAuthAccount) {
+            domainMetrics.recordEmailVerificationResend("ignored_oauth_account")
+            log.info("[AUTH] email verification resend ignored email={} reason=OAUTH_ACCOUNT", maskEmail(normalizedEmail))
+            return
+        }
+
+        sendVerification(member.id, member.email)
+        domainMetrics.recordEmailVerificationResend("issued")
+        log.info("[AUTH] email verification resent memberId={}", member.id)
     }
 
     @Transactional

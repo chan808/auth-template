@@ -35,24 +35,6 @@ services:
     networks:
       - auth-network
 
-  minio:
-    image: minio/minio:latest
-    container_name: auth-minio
-    restart: unless-stopped
-    env_file:
-      - .env
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    volumes:
-      - minio_data:/data
-    command: server /data --console-address ":9001"
-    networks:
-      - auth-network
-
   prometheus:
     image: prom/prometheus:v3.2.1
     container_name: auth-prometheus
@@ -98,6 +80,5 @@ networks:
 volumes:
   mysql_data:
   redis_data:
-  minio_data:
   prometheus_data:
   grafana_data:

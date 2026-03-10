@@ -1,4 +1,4 @@
-package io.github.chan808.authtemplate.member.service
+package io.github.chan808.authtemplate.member.application
 
 import io.github.chan808.authtemplate.common.AuthException
 import io.github.chan808.authtemplate.common.ErrorCode
@@ -17,8 +17,11 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.security.crypto.password.PasswordEncoder
+import org.springframework.transaction.annotation.Transactional
 import java.util.Optional
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 
 class MemberQueryServiceTest {
 
@@ -71,5 +74,24 @@ class MemberQueryServiceTest {
 
         assertEquals("encoded-password", member.password)
         verify { eventPublisher.publishEvent(any<Any>()) }
+    }
+
+    @Test
+    fun `verifyEmail uses writable transaction`() {
+        val method = MemberQueryService::class.java.getMethod("verifyEmail", String::class.java)
+
+        val tx = method.getAnnotation(Transactional::class.java)
+
+        assertNotNull(tx)
+        assertFalse(tx.readOnly)
+    }
+
+    @Test
+    fun `resendVerification delegates to email verification service`() {
+        every { emailVerificationService.resend("test@example.com", "127.0.0.1") } just Runs
+
+        service.resendVerification("test@example.com", "127.0.0.1")
+
+        verify { emailVerificationService.resend("test@example.com", "127.0.0.1") }
     }
 }

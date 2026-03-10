@@ -33,6 +33,8 @@ class SecurityConfig(
     private val securityExceptionHandler: SecurityExceptionHandler,
     @Value("\${cors.allowed-origin:http://localhost:3000}") private val allowedOrigin: String,
     @Value("\${cookie.secure:false}") private val cookieSecure: Boolean,
+    @Value("\${management.endpoints.web.public.info:false}") private val publicInfoEndpoint: Boolean,
+    @Value("\${management.endpoints.web.public.prometheus:false}") private val publicPrometheusEndpoint: Boolean,
 ) {
     @Autowired(required = false)
     private val clientRegistrationRepository: ClientRegistrationRepository? = null
@@ -71,7 +73,17 @@ class SecurityConfig(
                 it.requestMatchers(HttpMethod.POST, "/api/members").permitAll()
                 it.requestMatchers("/api-docs/**", "/swagger-ui/**").permitAll()
                 it.requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
-                it.requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info", "/actuator/prometheus").permitAll()
+                it.requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+                if (publicInfoEndpoint) {
+                    it.requestMatchers("/actuator/info").permitAll()
+                } else {
+                    it.requestMatchers("/actuator/info").hasAuthority("ADMIN")
+                }
+                if (publicPrometheusEndpoint) {
+                    it.requestMatchers("/actuator/prometheus").permitAll()
+                } else {
+                    it.requestMatchers("/actuator/prometheus").hasAuthority("ADMIN")
+                }
                 it.anyRequest().authenticated()
             }
             .addFilterBefore(JwtAuthenticationFilter(jwtProvider), UsernamePasswordAuthenticationFilter::class.java)

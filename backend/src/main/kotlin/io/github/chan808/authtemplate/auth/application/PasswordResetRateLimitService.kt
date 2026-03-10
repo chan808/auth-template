@@ -1,7 +1,7 @@
 package io.github.chan808.authtemplate.auth.application
 
-import io.github.chan808.authtemplate.auth.infrastructure.redis.RateLimiter
 import io.github.chan808.authtemplate.common.RateLimitException
+import io.github.chan808.authtemplate.common.ratelimit.RateLimiter
 import io.github.chan808.authtemplate.common.maskEmail
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service

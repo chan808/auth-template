@@ -26,6 +26,9 @@ class DomainMetrics(
     fun recordPasswordResetConfirmation(outcome: String) =
         increment("auth.password.reset.confirmations", "outcome", outcome)
 
+    fun recordEmailVerificationResend(outcome: String) =
+        increment("auth.email.verification.resend", "outcome", outcome)
+
     fun recordSignupSuccess() = increment("member.signup.total", "outcome", "success")
 
     fun recordSignupFailure(reason: String) = increment("member.signup.total", "outcome", "failure", "reason", reason)

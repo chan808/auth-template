@@ -34,8 +34,13 @@ class MemberQueryService(
     override fun findAuthMemberById(id: Long): AuthMemberView? =
         memberRepository.findById(id).orElse(null)?.toAuthView()
 
+    @Transactional
     override fun verifyEmail(token: String) {
         emailVerificationService.verify(token)
+    }
+
+    override fun resendVerification(email: String, ip: String) {
+        emailVerificationService.resend(email, ip)
     }
 
     @Transactional
@@ -91,7 +96,7 @@ class MemberQueryService(
         id = id,
         email = email,
         encodedPassword = password,
-        role = role,
+        role = role.name,
         emailVerified = emailVerified,
         provider = provider,
     )

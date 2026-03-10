@@ -1,4 +1,4 @@
-package io.github.chan808.authtemplate.auth.api
+package io.github.chan808.authtemplate.auth.presentation
 
 import com.ninjasquad.springmockk.MockkBean
 import io.github.chan808.authtemplate.auth.application.AuthCommandService
@@ -175,6 +175,31 @@ class AuthControllerTest {
 
         mockMvc.get("/api/auth/verify-email?token=bad-token")
             .andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `resend verification mail returns 200`() {
+        every { memberApi.resendVerification("test@example.com", "127.0.0.1") } just Runs
+
+        mockMvc.post("/api/auth/verify-email/resend") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"email":"test@example.com"}"""
+        }.andExpect {
+            status { isOk() }
+        }
+    }
+
+    @Test
+    fun `resend verification mail rate limit returns 429`() {
+        every { memberApi.resendVerification("test@example.com", "127.0.0.1") } throws RateLimitException(retryAfterSeconds = 900L)
+
+        mockMvc.post("/api/auth/verify-email/resend") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"email":"test@example.com"}"""
+        }.andExpect {
+            status { isTooManyRequests() }
+            header { string("Retry-After", "900") }
+        }
     }
 
     @Test

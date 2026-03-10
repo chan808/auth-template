@@ -15,7 +15,7 @@ class SmtpMailAdapter(
 ) : MailSender {
     private val log = LoggerFactory.getLogger(SmtpMailAdapter::class.java)
 
-    @Async
+    @Async("mailTaskExecutor")
     override fun send(to: String, subject: String, body: String) {
         runCatching {
             mailSender.send(mailSender.createMimeMessage().also { msg ->

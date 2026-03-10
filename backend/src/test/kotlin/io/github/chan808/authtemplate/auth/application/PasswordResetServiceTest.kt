@@ -1,15 +1,14 @@
-package io.github.chan808.authtemplate.auth.service
+package io.github.chan808.authtemplate.auth.application
 
 import io.github.chan808.authtemplate.auth.application.PasswordResetRateLimitService
 import io.github.chan808.authtemplate.auth.application.PasswordResetService
 import io.github.chan808.authtemplate.auth.application.port.AuthMailSender
-import io.github.chan808.authtemplate.auth.infrastructure.redis.PasswordResetStore
+import io.github.chan808.authtemplate.auth.application.port.PasswordResetTokenStore
 import io.github.chan808.authtemplate.common.AuthException
 import io.github.chan808.authtemplate.common.ErrorCode
 import io.github.chan808.authtemplate.common.metrics.DomainMetrics
 import io.github.chan808.authtemplate.member.api.AuthMemberView
 import io.github.chan808.authtemplate.member.api.MemberApi
-import io.github.chan808.authtemplate.member.domain.MemberRole
 import io.mockk.Runs
 import io.mockk.every
 import io.mockk.just
@@ -22,7 +21,7 @@ import kotlin.test.assertEquals
 class PasswordResetServiceTest {
 
     private val memberApi: MemberApi = mockk()
-    private val passwordResetStore: PasswordResetStore = mockk()
+    private val passwordResetStore: PasswordResetTokenStore = mockk()
     private val mailSender: AuthMailSender = mockk()
     private val passwordResetRateLimitService: PasswordResetRateLimitService = mockk()
     private val domainMetrics: DomainMetrics = mockk(relaxed = true)
@@ -39,7 +38,7 @@ class PasswordResetServiceTest {
         id = 1L,
         email = "test@example.com",
         encodedPassword = "encoded-old-password",
-        role = MemberRole.USER,
+        role = "USER",
         emailVerified = true,
         provider = null,
     )
@@ -91,20 +90,19 @@ class PasswordResetServiceTest {
     }
 
     @Test
-    fun `confirm reset delegates to memberApi and deletes token`() {
-        every { passwordResetStore.findMemberId("valid-token") } returns 1L
+    fun `confirm reset consumes token and delegates to memberApi`() {
+        every { passwordResetStore.consume("valid-token") } returns 1L
         every { memberApi.resetPassword(1L, "new-password") } just Runs
-        every { passwordResetStore.delete("valid-token") } just Runs
 
         service.confirmReset("valid-token", "new-password")
 
+        verify { passwordResetStore.consume("valid-token") }
         verify { memberApi.resetPassword(1L, "new-password") }
-        verify { passwordResetStore.delete("valid-token") }
     }
 
     @Test
     fun `confirm reset with invalid token throws exception`() {
-        every { passwordResetStore.findMemberId("expired-token") } returns null
+        every { passwordResetStore.consume("expired-token") } returns null
 
         val ex = assertThrows<AuthException> { service.confirmReset("expired-token", "new-password") }
         assertEquals(ErrorCode.PASSWORD_RESET_TOKEN_INVALID, ex.errorCode)

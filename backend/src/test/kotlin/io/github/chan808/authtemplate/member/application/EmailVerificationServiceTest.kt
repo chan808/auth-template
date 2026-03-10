@@ -1,8 +1,10 @@
-package io.github.chan808.authtemplate.member.service
+package io.github.chan808.authtemplate.member.application
 
 import io.github.chan808.authtemplate.common.ErrorCode
 import io.github.chan808.authtemplate.common.MemberException
+import io.github.chan808.authtemplate.common.metrics.DomainMetrics
 import io.github.chan808.authtemplate.member.application.EmailVerificationService
+import io.github.chan808.authtemplate.member.application.EmailVerificationResendRateLimitService
 import io.github.chan808.authtemplate.member.domain.Member
 import io.github.chan808.authtemplate.member.infrastructure.redis.EmailVerificationStore
 import io.github.chan808.authtemplate.member.infrastructure.persistence.MemberRepository
@@ -23,7 +25,15 @@ class EmailVerificationServiceTest {
     private val memberRepository: MemberRepository = mockk()
     private val emailVerificationStore: EmailVerificationStore = mockk()
     private val eventPublisher: ApplicationEventPublisher = mockk()
-    private val service = EmailVerificationService(memberRepository, emailVerificationStore, eventPublisher)
+    private val resendRateLimitService: EmailVerificationResendRateLimitService = mockk()
+    private val domainMetrics: DomainMetrics = mockk(relaxed = true)
+    private val service = EmailVerificationService(
+        memberRepository,
+        emailVerificationStore,
+        eventPublisher,
+        resendRateLimitService,
+        domainMetrics,
+    )
 
     private val member = Member(
         email = "test@example.com",
@@ -71,5 +81,31 @@ class EmailVerificationServiceTest {
 
         val ex = assertThrows<MemberException> { service.verify("token") }
         assertEquals(ErrorCode.EMAIL_ALREADY_VERIFIED, ex.errorCode)
+    }
+
+    @Test
+    fun `resend issues a new verification mail for unverified local account`() {
+        every { resendRateLimitService.check("127.0.0.1", "test@example.com") } just Runs
+        every { memberRepository.findByEmail("test@example.com") } returns member
+        every { emailVerificationStore.save(any(), 1L, any()) } just Runs
+        every { eventPublisher.publishEvent(any<Any>()) } just Runs
+
+        service.resend("test@example.com", "127.0.0.1")
+
+        verify { resendRateLimitService.check("127.0.0.1", "test@example.com") }
+        verify { emailVerificationStore.save(any(), 1L, any()) }
+        verify { eventPublisher.publishEvent(any<Any>()) }
+    }
+
+    @Test
+    fun `resend ignores already verified account`() {
+        val verifiedMember = Member(email = "test@example.com", emailVerified = true, id = 1L)
+        every { resendRateLimitService.check("127.0.0.1", "test@example.com") } just Runs
+        every { memberRepository.findByEmail("test@example.com") } returns verifiedMember
+
+        service.resend("test@example.com", "127.0.0.1")
+
+        verify(exactly = 0) { emailVerificationStore.save(any(), any(), any()) }
+        verify(exactly = 0) { eventPublisher.publishEvent(any<Any>()) }
     }
 }

@@ -1,4 +1,4 @@
-package io.github.chan808.authtemplate.member.api
+package io.github.chan808.authtemplate.member.presentation
 
 import com.ninjasquad.springmockk.MockkBean
 import io.github.chan808.authtemplate.auth.infrastructure.security.JwtProvider

@@ -1,7 +1,7 @@
 package io.github.chan808.authtemplate.auth.application
 
 import io.github.chan808.authtemplate.auth.application.port.AuthMailSender
-import io.github.chan808.authtemplate.auth.infrastructure.redis.PasswordResetStore
+import io.github.chan808.authtemplate.auth.application.port.PasswordResetTokenStore
 import io.github.chan808.authtemplate.common.AuthException
 import io.github.chan808.authtemplate.common.ErrorCode
 import io.github.chan808.authtemplate.common.metrics.DomainMetrics
@@ -14,7 +14,7 @@ import java.util.UUID
 @Service
 class PasswordResetService(
     private val memberApi: MemberApi,
-    private val passwordResetStore: PasswordResetStore,
+    private val passwordResetStore: PasswordResetTokenStore,
     private val mailSender: AuthMailSender,
     private val passwordResetRateLimitService: PasswordResetRateLimitService,
     private val domainMetrics: DomainMetrics,
@@ -57,13 +57,12 @@ class PasswordResetService(
     }
 
     fun confirmReset(token: String, newPassword: String) {
-        val memberId = passwordResetStore.findMemberId(token) ?: run {
+        val memberId = passwordResetStore.consume(token) ?: run {
             domainMetrics.recordPasswordResetConfirmation("invalid_token")
             throw AuthException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID)
         }
 
         memberApi.resetPassword(memberId, newPassword)
-        passwordResetStore.delete(token)
         domainMetrics.recordPasswordResetConfirmation("success")
         log.info("[AUTH] Password reset completed memberId={}", memberId)
     }

@@ -1,9 +1,9 @@
 package io.github.chan808.authtemplate.auth.application
 
 import io.github.chan808.authtemplate.auth.api.AuthApi
+import io.github.chan808.authtemplate.auth.application.port.AccessTokenPort
 import io.github.chan808.authtemplate.auth.application.port.TokenStore
 import io.github.chan808.authtemplate.auth.domain.RefreshTokenSession
-import io.github.chan808.authtemplate.auth.infrastructure.security.JwtProvider
 import io.github.chan808.authtemplate.auth.presentation.LoginRequest
 import io.github.chan808.authtemplate.common.AuthException
 import io.github.chan808.authtemplate.common.ErrorCode
@@ -23,7 +23,7 @@ import java.util.UUID
 class AuthCommandService(
     private val memberApi: MemberApi,
     private val passwordEncoder: PasswordEncoder,
-    private val jwtProvider: JwtProvider,
+    private val accessTokenPort: AccessTokenPort,
     private val tokenStore: TokenStore,
     private val loginRateLimitService: LoginRateLimitService,
     private val domainMetrics: DomainMetrics,
@@ -65,7 +65,7 @@ class AuthCommandService(
             sid = sid,
             session = RefreshTokenSession(
                 memberId = member.id,
-                role = member.role.name,
+                role = member.role,
                 tokenHash = hashToken(rt),
                 absoluteExpiryEpoch = Instant.now().plusSeconds(30L * 24 * 3600).epochSecond,
             ),
@@ -74,7 +74,7 @@ class AuthCommandService(
         tokenStore.addSession(member.id, sid)
         domainMetrics.recordLoginSuccess()
 
-        return jwtProvider.generateAccessToken(member.id, member.role.name) to rt
+        return accessTokenPort.generateAccessToken(member.id, member.role) to rt
     }
 
     fun reissue(rtToken: String): Pair<String, String> {
@@ -112,7 +112,7 @@ class AuthCommandService(
             tokenStore.save(sid, session.copy(tokenHash = hashToken(newRt)), 7L * 24 * 3600)
             domainMetrics.recordRefreshTokenReissueSuccess()
 
-            return jwtProvider.generateAccessToken(session.memberId, session.role) to newRt
+            return accessTokenPort.generateAccessToken(session.memberId, session.role) to newRt
         } finally {
             tokenStore.releaseLock(sid)
         }
@@ -139,7 +139,7 @@ class AuthCommandService(
             ttlSeconds = 7L * 24 * 3600,
         )
         tokenStore.addSession(memberId, sid)
-        return jwtProvider.generateAccessToken(memberId, role) to rt
+        return accessTokenPort.generateAccessToken(memberId, role) to rt
     }
 
     override fun invalidateAllSessions(memberId: Long) {

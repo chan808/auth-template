@@ -35,14 +35,21 @@ class MemberCommandService(
     fun signup(request: SignupRequest, ip: String): MemberResponse {
         signupRateLimitService.check(ip)
         val email = request.email.lowercase().trim()
+        memberRepository.findByEmail(email)?.let { existing ->
+            if (existing.emailVerified || existing.isOAuthAccount) {
+                domainMetrics.recordSignupFailure("duplicate_email")
+                throw MemberException(ErrorCode.EMAIL_ALREADY_EXISTS)
+            }
 
-        if (memberRepository.existsByEmail(email)) {
-            domainMetrics.recordSignupFailure("duplicate_email")
-            throw MemberException(ErrorCode.EMAIL_ALREADY_EXISTS)
+            breachedPasswordChecker.check(request.password, email)
+            existing.changePassword(passwordEncoder.encode(request.password) ?: error("PasswordEncoder returned null"))
+            emailVerificationService.sendVerification(existing.id, existing.email)
+            domainMetrics.recordSignupSuccess()
+            log.info("[AUTH] unverified signup retried memberId={}", existing.id)
+            return MemberResponse.from(existing)
         }
 
         breachedPasswordChecker.check(request.password, email)
-
         val member = memberRepository.save(
             Member(
                 email = email,

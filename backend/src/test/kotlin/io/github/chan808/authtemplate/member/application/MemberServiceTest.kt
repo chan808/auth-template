@@ -1,4 +1,4 @@
-package io.github.chan808.authtemplate.member.service
+package io.github.chan808.authtemplate.member.application
 
 import io.github.chan808.authtemplate.common.ErrorCode
 import io.github.chan808.authtemplate.common.MemberException
@@ -44,7 +44,9 @@ class MemberCommandServiceTest {
     @Test
     fun `duplicate email throws email already exists`() {
         every { signupRateLimitService.check(any()) } just Runs
-        every { memberRepository.existsByEmail(any()) } returns true
+        every {
+            memberRepository.findByEmail("test@example.com")
+        } returns Member(email = "test@example.com", password = "encoded", emailVerified = true, id = 1L)
 
         val ex = assertThrows<MemberException> {
             memberCommandService.signup(SignupRequest("test@example.com", "Password1!"), "127.0.0.1")
@@ -55,7 +57,7 @@ class MemberCommandServiceTest {
     @Test
     fun `email is normalized to lowercase on signup`() {
         every { signupRateLimitService.check(any()) } just Runs
-        every { memberRepository.existsByEmail("test@example.com") } returns false
+        every { memberRepository.findByEmail("test@example.com") } returns null
         every { breachedPasswordChecker.check(any(), any()) } just Runs
         every { passwordEncoder.encode(any()) } returns "encoded"
         every { memberRepository.save(any()) } answers {
@@ -66,6 +68,28 @@ class MemberCommandServiceTest {
         memberCommandService.signup(SignupRequest("TEST@EXAMPLE.COM", "Password1!"), "127.0.0.1")
 
         verify { memberRepository.save(match { it.email == "test@example.com" }) }
+    }
+
+    @Test
+    fun `unverified local account can sign up again and receives a new verification mail`() {
+        val existing = Member(
+            email = "test@example.com",
+            password = "old-encoded",
+            emailVerified = false,
+            id = 1L,
+        )
+        every { signupRateLimitService.check(any()) } just Runs
+        every { memberRepository.findByEmail("test@example.com") } returns existing
+        every { breachedPasswordChecker.check(any(), any()) } just Runs
+        every { passwordEncoder.encode("Password1!") } returns "new-encoded"
+        every { emailVerificationService.sendVerification(1L, "test@example.com") } just Runs
+
+        val response = memberCommandService.signup(SignupRequest("test@example.com", "Password1!"), "127.0.0.1")
+
+        assertEquals(existing.id, response.id)
+        assertEquals("new-encoded", existing.password)
+        verify { emailVerificationService.sendVerification(1L, "test@example.com") }
+        verify(exactly = 0) { memberRepository.save(any()) }
     }
 
     @Test

@@ -1,4 +1,4 @@
-package io.github.chan808.authtemplate.auth.infrastructure.redis
+package io.github.chan808.authtemplate.common.ratelimit
 
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.data.redis.core.script.DefaultRedisScript

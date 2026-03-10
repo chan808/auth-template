@@ -1,17 +1,16 @@
-package io.github.chan808.authtemplate.auth.service
+package io.github.chan808.authtemplate.auth.application
 
 import io.github.chan808.authtemplate.auth.application.AuthCommandService
 import io.github.chan808.authtemplate.auth.application.LoginRateLimitService
+import io.github.chan808.authtemplate.auth.application.port.AccessTokenPort
 import io.github.chan808.authtemplate.auth.application.port.TokenStore
 import io.github.chan808.authtemplate.auth.domain.RefreshTokenSession
-import io.github.chan808.authtemplate.auth.infrastructure.security.JwtProvider
 import io.github.chan808.authtemplate.auth.presentation.LoginRequest
 import io.github.chan808.authtemplate.common.AuthException
 import io.github.chan808.authtemplate.common.ErrorCode
 import io.github.chan808.authtemplate.common.metrics.DomainMetrics
 import io.github.chan808.authtemplate.member.api.AuthMemberView
 import io.github.chan808.authtemplate.member.api.MemberApi
-import io.github.chan808.authtemplate.member.domain.MemberRole
 import io.mockk.Runs
 import io.mockk.every
 import io.mockk.just
@@ -29,14 +28,14 @@ class AuthCommandServiceTest {
 
     private val memberApi: MemberApi = mockk()
     private val passwordEncoder: PasswordEncoder = mockk()
-    private val jwtProvider: JwtProvider = mockk()
+    private val accessTokenPort: AccessTokenPort = mockk()
     private val tokenStore: TokenStore = mockk()
     private val loginRateLimitService: LoginRateLimitService = mockk()
     private val domainMetrics: DomainMetrics = mockk(relaxed = true)
     private val authCommandService = AuthCommandService(
         memberApi,
         passwordEncoder,
-        jwtProvider,
+        accessTokenPort,
         tokenStore,
         loginRateLimitService,
         domainMetrics,
@@ -46,7 +45,7 @@ class AuthCommandServiceTest {
         id = 1L,
         email = "test@example.com",
         encodedPassword = "encoded-password",
-        role = MemberRole.USER,
+        role = "USER",
         emailVerified = true,
         provider = null,
     )
@@ -56,7 +55,7 @@ class AuthCommandServiceTest {
         every { loginRateLimitService.check(any(), any()) } just Runs
         every { memberApi.findAuthMemberByEmail("test@example.com") } returns memberView
         every { passwordEncoder.matches(any(), any()) } returns true
-        every { jwtProvider.generateAccessToken(1L, "USER") } returns "access-token"
+        every { accessTokenPort.generateAccessToken(1L, "USER") } returns "access-token"
         every { tokenStore.save(any(), any(), any()) } just Runs
         every { tokenStore.addSession(any(), any()) } just Runs
 

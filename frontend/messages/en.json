@@ -9,7 +9,14 @@
       "signupLink": "Don't have an account? Sign Up",
       "forgotPasswordLink": "Forgot your password?",
       "errorMessage": "Invalid email or password.",
-      "resetSuccessMessage": "Password changed. Please sign in with your new password."
+      "resetSuccessMessage": "Password changed. Please sign in with your new password.",
+      "resend": {
+        "description": "If you haven't verified {email} yet, you can send a new verification email.",
+        "action": "Resend verification email",
+        "cooldown": "Resend available in {seconds}s",
+        "success": "A new verification email has been sent. Please check your inbox.",
+        "error": "Failed to resend the verification email."
+      }
     },
     "forgotPassword": {
       "title": "Reset Password",
@@ -31,7 +38,13 @@
       "loginLink": "Already have an account? Sign In",
       "successMessage": "Account created. Please sign in.",
       "verifyTitle": "Check your email",
-      "verifyDescription": "We sent you a verification link. Please check your inbox and click the link."
+      "verifyDescription": "We sent a verification link to {email}. Please check your inbox and click the link.",
+      "resend": {
+        "action": "Resend verification email",
+        "cooldown": "Resend available in {seconds}s",
+        "success": "A new verification email has been sent. Please check your inbox.",
+        "error": "Failed to resend the verification email."
+      }
     },
     "resetPassword": {
       "title": "Reset Password",

@@ -75,6 +75,15 @@ class AuthController(
         return ResponseEntity.ok(ApiResponse.success())
     }
 
+    @PostMapping("/verify-email/resend")
+    fun resendVerificationEmail(
+        @RequestBody @Valid request: EmailVerificationResendRequest,
+        servletRequest: HttpServletRequest,
+    ): ResponseEntity<ApiResponse<Unit>> {
+        memberApi.resendVerification(request.email, clientIpResolver.resolve(servletRequest))
+        return ResponseEntity.ok(ApiResponse.success("If the account exists and is not verified, a new verification email has been sent."))
+    }
+
     @PostMapping("/password-reset/request")
     fun requestPasswordReset(
         @RequestBody @Valid request: PasswordResetRequest,
