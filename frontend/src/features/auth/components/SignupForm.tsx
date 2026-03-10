@@ -27,10 +27,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/shared/components/ui/card";
+import { passwordSchema } from "@/shared/lib/validations";
 
 const schema = z.object({
   email: z.string().email(),
-  password: z.string().min(8),
+  password: passwordSchema,
 });
 
 type FormData = z.infer<typeof schema>;

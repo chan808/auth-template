@@ -23,10 +23,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/shared/components/ui/card";
+import { passwordSchema } from "@/shared/lib/validations";
 
 const schema = z
   .object({
-    newPassword: z.string().min(8),
+    newPassword: passwordSchema,
     confirmPassword: z.string(),
   })
   .refine((d) => d.newPassword === d.confirmPassword, {
