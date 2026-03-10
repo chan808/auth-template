@@ -1,7 +1,6 @@
 services:
   mysql:
     image: mysql:8.4
-    container_name: mysql
     restart: always
     env_file:
       - .env
@@ -23,7 +22,6 @@ services:
 
   redis:
     image: redis:8.0-alpine
-    container_name: auth-redis
     restart: always
     env_file:
       - .env
@@ -37,7 +35,6 @@ services:
 
   prometheus:
     image: prom/prometheus:v3.2.1
-    container_name: auth-prometheus
     restart: unless-stopped
     profiles:
       - observability
@@ -53,7 +50,6 @@ services:
 
   grafana:
     image: grafana/grafana:11.5.2
-    container_name: auth-grafana
     restart: unless-stopped
     profiles:
       - observability

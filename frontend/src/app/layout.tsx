@@ -5,7 +5,7 @@ import "./globals.css";
 const font = Geist({ subsets: ["latin"], variable: "--font-geist-sans" });
 
 export const metadata: Metadata = {
-  title: "Auth Template",
+  title: process.env.NEXT_PUBLIC_APP_NAME ?? "Application",
 };
 
 // html/body 골격 — lang은 [locale]/layout.tsx의 metadata에서 처리

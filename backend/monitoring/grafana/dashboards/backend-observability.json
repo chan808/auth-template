@@ -60,7 +60,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "sum(rate(http_server_requests_seconds_count{application=\"auth-template-backend\",uri!~\"/actuator.*\"}[5m]))",
+          "expr": "sum(rate(http_server_requests_seconds_count{application=~\"$application\",uri!~\"/actuator.*\"}[5m]))",
           "legendFormat": "req/s",
           "range": true,
           "refId": "A"
@@ -125,7 +125,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{application=\"auth-template-backend\",uri!~\"/actuator.*\"}[5m])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{application=~\"$application\",uri!~\"/actuator.*\"}[5m])))",
           "legendFormat": "p95",
           "range": true,
           "refId": "A"
@@ -186,7 +186,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "sum(rate(http_server_requests_seconds_count{application=\"auth-template-backend\",status=~\"5..\",uri!~\"/actuator.*\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{application=\"auth-template-backend\",uri!~\"/actuator.*\"}[5m])), 0.0001)",
+          "expr": "sum(rate(http_server_requests_seconds_count{application=~\"$application\",status=~\"5..\",uri!~\"/actuator.*\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{application=~\"$application\",uri!~\"/actuator.*\"}[5m])), 0.0001)",
           "legendFormat": "5xx rate",
           "range": true,
           "refId": "A"
@@ -247,7 +247,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "sum(jvm_memory_used_bytes{application=\"auth-template-backend\",area=\"heap\"})",
+          "expr": "sum(jvm_memory_used_bytes{application=~\"$application\",area=\"heap\"})",
           "legendFormat": "heap used",
           "range": true,
           "refId": "A"
@@ -289,7 +289,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "sum by (method, uri, status) (rate(http_server_requests_seconds_count{application=\"auth-template-backend\",uri!~\"/actuator.*\"}[5m]))",
+          "expr": "sum by (method, uri, status) (rate(http_server_requests_seconds_count{application=~\"$application\",uri!~\"/actuator.*\"}[5m]))",
           "legendFormat": "{{method}} {{uri}} {{status}}",
           "range": true,
           "refId": "A"
@@ -331,7 +331,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "sum by (outcome, reason) (rate(auth_login_attempts_total{application=\"auth-template-backend\"}[5m]))",
+          "expr": "sum by (outcome, reason) (rate(auth_login_attempts_total{application=~\"$application\"}[5m]))",
           "legendFormat": "{{outcome}} {{reason}}",
           "range": true,
           "refId": "A"
@@ -373,7 +373,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "sum by (outcome) (rate(auth_password_reset_requests_total{application=\"auth-template-backend\"}[5m]))",
+          "expr": "sum by (outcome) (rate(auth_password_reset_requests_total{application=~\"$application\"}[5m]))",
           "legendFormat": "{{outcome}}",
           "range": true,
           "refId": "A"
@@ -415,7 +415,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "sum by (outcome) (rate(auth_password_reset_confirmations_total{application=\"auth-template-backend\"}[5m]))",
+          "expr": "sum by (outcome) (rate(auth_password_reset_confirmations_total{application=~\"$application\"}[5m]))",
           "legendFormat": "{{outcome}}",
           "range": true,
           "refId": "A"
@@ -457,7 +457,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "sum by (outcome, reason) (rate(member_signup_total{application=\"auth-template-backend\"}[5m]))",
+          "expr": "sum by (outcome, reason) (rate(member_signup_total{application=~\"$application\"}[5m]))",
           "legendFormat": "{{outcome}} {{reason}}",
           "range": true,
           "refId": "A"
@@ -499,7 +499,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "sum by (reason) (rate(auth_session_invalidations_total{application=\"auth-template-backend\"}[5m]))",
+          "expr": "sum by (reason) (rate(auth_session_invalidations_total{application=~\"$application\"}[5m]))",
           "legendFormat": "{{reason}}",
           "range": true,
           "refId": "A"
@@ -541,7 +541,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "sum by (state) (hikaricp_connections{application=\"auth-template-backend\"})",
+          "expr": "sum by (state) (hikaricp_connections{application=~\"$application\"})",
           "legendFormat": "{{state}}",
           "range": true,
           "refId": "A"
@@ -555,11 +555,38 @@
   "schemaVersion": 40,
   "style": "dark",
   "tags": [
-    "auth-template",
+    "backend",
     "observability"
   ],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": ".*",
+          "value": ".*"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(jvm_memory_used_bytes, application)",
+        "includeAll": true,
+        "label": "Application",
+        "multi": false,
+        "name": "application",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(jvm_memory_used_bytes, application)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      }
+    ]
   },
   "time": {
     "from": "now-30m",
@@ -567,8 +594,8 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Auth Template Observability",
-  "uid": "auth-template-observability",
+  "title": "Backend Observability",
+  "uid": "backend-observability",
   "version": 1,
   "weekStart": ""
 }

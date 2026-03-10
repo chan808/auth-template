@@ -3,9 +3,9 @@ spring:
     import:
       - optional:file:.env[.properties]
   application:
-    name: auth-template-backend
+    name: ${SPRING_APPLICATION_NAME:backend}
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/authtemplate?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true}
+    url: ${DB_URL:jdbc:mysql://localhost:3306/${MYSQL_DATABASE:app}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true}
     username: ${MYSQL_USER:root}
     password: ${MYSQL_PASSWORD:root_pass}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -100,7 +100,7 @@ app:
         enabled: ${UNVERIFIED_MEMBER_CLEANUP_ENABLED:true}
         age-days: ${UNVERIFIED_MEMBER_CLEANUP_AGE_DAYS:7}
         cron: ${UNVERIFIED_MEMBER_CLEANUP_CRON:0 0 3 * * *}
-  name: ${APP_NAME:auth-template}
+  name: ${APP_NAME:application}
 
 management:
   endpoints:

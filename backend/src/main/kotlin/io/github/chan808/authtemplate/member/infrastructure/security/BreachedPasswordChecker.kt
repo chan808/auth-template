@@ -11,7 +11,7 @@ import java.security.MessageDigest
 
 @Component
 class BreachedPasswordChecker(
-    @Value("\${app.name:auth-template}") private val serviceName: String,
+    @Value("\${app.name:application}") private val serviceName: String,
 ) {
     private val restClient = RestClient.builder()
         .requestFactory(

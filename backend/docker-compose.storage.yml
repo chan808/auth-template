@@ -1,7 +1,6 @@
 services:
   minio:
     image: minio/minio:latest
-    container_name: auth-minio
     restart: unless-stopped
     env_file:
       - .env

@@ -11,7 +11,7 @@ class ObservabilityConfig {
 
     @Bean
     fun meterRegistryCustomizer(
-        @Value("\${spring.application.name:auth-template-backend}") applicationName: String,
+        @Value("\${spring.application.name:backend}") applicationName: String,
         @Value("\${spring.profiles.active:default}") profile: String,
     ): MeterRegistryCustomizer<MeterRegistry> =
         MeterRegistryCustomizer { registry ->

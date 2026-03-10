@@ -12,7 +12,7 @@ plugins {
 
 group = "io.github.chan808"
 version = "0.0.1-SNAPSHOT"
-description = "auth-template"
+description = "backend"
 
 java {
     toolchain {
