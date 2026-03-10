@@ -5,8 +5,8 @@ import io.github.chan808.authtemplate.auth.application.PasswordResetService
 import io.github.chan808.authtemplate.auth.infrastructure.redis.OAuthCodeStore
 import io.github.chan808.authtemplate.common.ApiResponse
 import io.github.chan808.authtemplate.common.AuthException
+import io.github.chan808.authtemplate.common.ClientIpResolver
 import io.github.chan808.authtemplate.common.ErrorCode
-import io.github.chan808.authtemplate.common.clientIp
 import io.github.chan808.authtemplate.member.api.MemberApi
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
@@ -29,6 +29,7 @@ class AuthController(
     private val authCommandService: AuthCommandService,
     private val memberApi: MemberApi,
     private val passwordResetService: PasswordResetService,
+    private val clientIpResolver: ClientIpResolver,
     private val oAuthCodeStore: OAuthCodeStore,
     @Value("\${cookie.secure:false}") private val cookieSecure: Boolean,
     @Value("\${jwt.refresh-token-expiry}") private val rtTtl: Long,
@@ -40,7 +41,7 @@ class AuthController(
         servletRequest: HttpServletRequest,
         response: jakarta.servlet.http.HttpServletResponse,
     ): ResponseEntity<ApiResponse<TokenResponse>> {
-        val (at, rt) = authCommandService.login(request, servletRequest.clientIp())
+        val (at, rt) = authCommandService.login(request, clientIpResolver.resolve(servletRequest))
         response.addHeader(HttpHeaders.SET_COOKIE, buildRtCookie(rt, rtTtl).toString())
         return ResponseEntity.ok(ApiResponse.of(TokenResponse(at)))
     }
@@ -78,7 +79,7 @@ class AuthController(
         @RequestBody @Valid request: PasswordResetRequest,
         servletRequest: HttpServletRequest,
     ): ResponseEntity<ApiResponse<Unit>> {
-        passwordResetService.requestReset(request.email, servletRequest.clientIp())
+        passwordResetService.requestReset(request.email, clientIpResolver.resolve(servletRequest))
         return ResponseEntity.ok(ApiResponse.success())
     }
 

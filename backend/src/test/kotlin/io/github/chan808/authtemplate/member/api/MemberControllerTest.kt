@@ -1,12 +1,13 @@
 package io.github.chan808.authtemplate.member.api
 
 import com.ninjasquad.springmockk.MockkBean
+import io.github.chan808.authtemplate.auth.infrastructure.security.JwtProvider
 import io.github.chan808.authtemplate.auth.infrastructure.security.SecurityConfig
+import io.github.chan808.authtemplate.auth.infrastructure.security.SecurityExceptionHandler
+import io.github.chan808.authtemplate.common.ClientIpResolver
 import io.github.chan808.authtemplate.common.ErrorCode
 import io.github.chan808.authtemplate.common.MemberException
 import io.github.chan808.authtemplate.common.RateLimitException
-import io.github.chan808.authtemplate.auth.infrastructure.security.JwtProvider
-import io.github.chan808.authtemplate.auth.infrastructure.security.SecurityExceptionHandler
 import io.github.chan808.authtemplate.member.application.MemberCommandService
 import io.github.chan808.authtemplate.member.presentation.MemberController
 import io.github.chan808.authtemplate.member.presentation.MemberResponse
@@ -44,7 +45,9 @@ class MemberControllerTest {
     lateinit var mockMvc: MockMvc
 
     @MockkBean lateinit var memberCommandService: MemberCommandService
+    @MockkBean lateinit var clientIpResolver: ClientIpResolver
     @MockkBean lateinit var jwtProvider: JwtProvider
+
     private val testMemberResponse = MemberResponse(
         id = 1L,
         email = "test@example.com",
@@ -57,7 +60,8 @@ class MemberControllerTest {
     private val authHeader = "Bearer test-token"
 
     @BeforeEach
-    fun setupJwtMock() {
+    fun setup() {
+        every { clientIpResolver.resolve(any()) } returns "127.0.0.1"
         val claims = mockk<Claims>()
         every { claims.subject } returns "1"
         every { claims["role"] } returns "USER"
@@ -101,7 +105,7 @@ class MemberControllerTest {
     }
 
     @Test
-    fun `signup rate limit returns 429 with retry after`() {
+    fun `signup rate limit returns 429`() {
         every { memberCommandService.signup(any(), any()) } throws RateLimitException(retryAfterSeconds = 3600L)
 
         mockMvc.post("/api/members") {
@@ -134,8 +138,7 @@ class MemberControllerTest {
 
     @Test
     fun `update profile returns 200`() {
-        val updated = testMemberResponse.copy(nickname = "new-nickname")
-        every { memberCommandService.updateProfile(1L, any()) } returns updated
+        every { memberCommandService.updateProfile(1L, any()) } returns testMemberResponse.copy(nickname = "new-nickname")
 
         mockMvc.patch("/api/members/me/profile") {
             header("Authorization", authHeader)
@@ -149,12 +152,10 @@ class MemberControllerTest {
 
     @Test
     fun `too long nickname returns 400`() {
-        val longNickname = "a".repeat(51)
-
         mockMvc.patch("/api/members/me/profile") {
             header("Authorization", authHeader)
             contentType = MediaType.APPLICATION_JSON
-            content = """{"nickname":"$longNickname"}"""
+            content = """{"nickname":"${"a".repeat(51)}"}"""
         }.andExpect {
             status { isBadRequest() }
         }

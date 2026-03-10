@@ -40,6 +40,10 @@ class MemberQueryService(
     override fun resetPassword(memberId: Long, newRawPassword: String) {
         val member = memberRepository.findById(memberId)
             .orElseThrow { AuthException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID) }
+        if (member.isOAuthAccount) {
+            throw AuthException(ErrorCode.OAUTH_PASSWORD_RESET_NOT_ALLOWED)
+        }
+
         breachedPasswordChecker.check(newRawPassword, member.email)
         member.changePassword(passwordEncoder.encode(newRawPassword) ?: error("PasswordEncoder returned null"))
         eventPublisher.publishEvent(PasswordChangedEvent(memberId))
@@ -52,21 +56,20 @@ class MemberQueryService(
         providerId: String,
         nickname: String?,
     ): AuthMemberView {
-        // provider + providerId로 기존 회원 조회
         memberRepository.findByProviderAndProviderId(provider, providerId)
             ?.let { return it.toAuthView() }
 
-        // 동일 이메일로 가입된 로컬/타 소셜 계정 확인
         memberRepository.findByEmail(email)?.let { existing ->
             val existingProvider = existing.provider ?: "LOCAL"
             log.warn(
-                "[AUTH] OAuth 이메일 충돌 email={} existingProvider={} requestedProvider={}",
-                email, existingProvider, provider,
+                "[AUTH] OAuth email conflict email={} existingProvider={} requestedProvider={}",
+                email,
+                existingProvider,
+                provider,
             )
             throw AuthException(ErrorCode.EMAIL_ALREADY_EXISTS)
         }
 
-        // 소셜 최초 가입: 이메일 인증 불필요 (제공자가 이미 검증)
         val member = memberRepository.save(
             Member(
                 email = email,
@@ -76,7 +79,7 @@ class MemberQueryService(
                 emailVerified = true,
             ),
         )
-        log.info("[AUTH] OAuth2 신규 가입 provider={} memberId={}", provider, member.id)
+        log.info("[AUTH] OAuth2 signup provider={} memberId={}", provider, member.id)
         return member.toAuthView()
     }
 

@@ -3,11 +3,11 @@ package io.github.chan808.authtemplate.auth.service
 import io.github.chan808.authtemplate.auth.application.AuthCommandService
 import io.github.chan808.authtemplate.auth.application.LoginRateLimitService
 import io.github.chan808.authtemplate.auth.application.port.TokenStore
-import io.github.chan808.authtemplate.auth.presentation.LoginRequest
 import io.github.chan808.authtemplate.auth.domain.RefreshTokenSession
+import io.github.chan808.authtemplate.auth.infrastructure.security.JwtProvider
+import io.github.chan808.authtemplate.auth.presentation.LoginRequest
 import io.github.chan808.authtemplate.common.AuthException
 import io.github.chan808.authtemplate.common.ErrorCode
-import io.github.chan808.authtemplate.auth.infrastructure.security.JwtProvider
 import io.github.chan808.authtemplate.member.api.AuthMemberView
 import io.github.chan808.authtemplate.member.api.MemberApi
 import io.github.chan808.authtemplate.member.domain.MemberRole
@@ -79,8 +79,7 @@ class AuthCommandServiceTest {
     fun `reissue lock conflict throws reissue conflict`() {
         every { tokenStore.tryLock(any()) } returns false
 
-        val fakeRt = "${UUID.randomUUID()}.randompart"
-        val ex = assertThrows<AuthException> { authCommandService.reissue(fakeRt) }
+        val ex = assertThrows<AuthException> { authCommandService.reissue("${UUID.randomUUID()}.randompart") }
 
         assertEquals(ErrorCode.REISSUE_CONFLICT, ex.errorCode)
     }
@@ -96,12 +95,29 @@ class AuthCommandServiceTest {
         )
         every { tokenStore.tryLock(sid) } returns true
         every { tokenStore.find(sid) } returns session
-        every { tokenStore.delete(sid) } just Runs
+        every { tokenStore.deleteSession(1L, sid) } just Runs
         every { tokenStore.releaseLock(sid) } just Runs
 
         val ex = assertThrows<AuthException> { authCommandService.reissue("$sid.actualrandompart") }
 
         assertEquals(ErrorCode.REFRESH_TOKEN_MISMATCH, ex.errorCode)
-        verify { tokenStore.delete(sid) }
+        verify { tokenStore.deleteSession(1L, sid) }
+    }
+
+    @Test
+    fun `logout removes session from token store`() {
+        val sid = UUID.randomUUID().toString()
+        val session = RefreshTokenSession(
+            memberId = 1L,
+            role = "USER",
+            tokenHash = "hash-value",
+            absoluteExpiryEpoch = Instant.now().plusSeconds(3600).epochSecond,
+        )
+        every { tokenStore.find(sid) } returns session
+        every { tokenStore.deleteSession(1L, sid) } just Runs
+
+        authCommandService.logout("$sid.randompart")
+
+        verify { tokenStore.deleteSession(1L, sid) }
     }
 }

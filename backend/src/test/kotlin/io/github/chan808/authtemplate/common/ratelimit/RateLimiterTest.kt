@@ -3,6 +3,7 @@ package io.github.chan808.authtemplate.common.ratelimit
 import io.github.chan808.authtemplate.auth.infrastructure.redis.RateLimiter
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory
 import org.springframework.data.redis.core.StringRedisTemplate
@@ -13,6 +14,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
+@Tag("integration")
 @Testcontainers
 class RateLimiterTest {
 

@@ -2,10 +2,10 @@ package io.github.chan808.authtemplate.auth.service
 
 import io.github.chan808.authtemplate.auth.application.PasswordResetRateLimitService
 import io.github.chan808.authtemplate.auth.application.PasswordResetService
+import io.github.chan808.authtemplate.auth.application.port.AuthMailSender
 import io.github.chan808.authtemplate.auth.infrastructure.redis.PasswordResetStore
 import io.github.chan808.authtemplate.common.AuthException
 import io.github.chan808.authtemplate.common.ErrorCode
-import io.github.chan808.authtemplate.auth.application.port.AuthMailSender
 import io.github.chan808.authtemplate.member.api.AuthMemberView
 import io.github.chan808.authtemplate.member.api.MemberApi
 import io.github.chan808.authtemplate.member.domain.MemberRole
@@ -32,7 +32,7 @@ class PasswordResetServiceTest {
         "https://example.com",
     )
 
-    private val memberView = AuthMemberView(
+    private val localMember = AuthMemberView(
         id = 1L,
         email = "test@example.com",
         encodedPassword = "encoded-old-password",
@@ -41,18 +41,20 @@ class PasswordResetServiceTest {
         provider = null,
     )
 
+    private val oauthMember = localMember.copy(provider = "GOOGLE")
+
     @Test
-    fun `request reset stores token and sends email for existing member`() {
+    fun `request reset stores token and sends email for local account`() {
         every { passwordResetRateLimitService.check(any(), any()) } just Runs
-        every { memberApi.findAuthMemberByEmail("test@example.com") } returns memberView
+        every { memberApi.findAuthMemberByEmail("test@example.com") } returns localMember
         every { passwordResetStore.save(any(), 1L) } just Runs
         every { mailSender.send(any(), any(), any()) } just Runs
 
         service.requestReset("test@example.com", "127.0.0.1")
 
-        verify(exactly = 1) { passwordResetRateLimitService.check("127.0.0.1", "test@example.com") }
-        verify(exactly = 1) { passwordResetStore.save(any(), 1L) }
-        verify(exactly = 1) { mailSender.send("test@example.com", "비밀번호 재설정", any()) }
+        verify { passwordResetRateLimitService.check("127.0.0.1", "test@example.com") }
+        verify { passwordResetStore.save(any(), 1L) }
+        verify { mailSender.send("test@example.com", "비밀번호 재설정", any()) }
     }
 
     @Test
@@ -62,7 +64,20 @@ class PasswordResetServiceTest {
 
         service.requestReset("unknown@example.com", "127.0.0.1")
 
-        verify(exactly = 1) { passwordResetRateLimitService.check("127.0.0.1", "unknown@example.com") }
+        verify { passwordResetRateLimitService.check("127.0.0.1", "unknown@example.com") }
+        verify(exactly = 0) { passwordResetStore.save(any(), any()) }
+        verify(exactly = 0) { mailSender.send(any(), any(), any()) }
+    }
+
+    @Test
+    fun `request reset on oauth account does not issue token`() {
+        every { passwordResetRateLimitService.check(any(), any()) } just Runs
+        every { memberApi.findAuthMemberByEmail("oauth@example.com") } returns oauthMember.copy(email = "oauth@example.com")
+
+        service.requestReset("oauth@example.com", "127.0.0.1")
+
+        verify { passwordResetRateLimitService.check("127.0.0.1", "oauth@example.com") }
+        verify(exactly = 0) { passwordResetStore.save(any(), any()) }
         verify(exactly = 0) { mailSender.send(any(), any(), any()) }
     }
 
@@ -74,8 +89,8 @@ class PasswordResetServiceTest {
 
         service.confirmReset("valid-token", "new-password")
 
-        verify(exactly = 1) { memberApi.resetPassword(1L, "new-password") }
-        verify(exactly = 1) { passwordResetStore.delete("valid-token") }
+        verify { memberApi.resetPassword(1L, "new-password") }
+        verify { passwordResetStore.delete("valid-token") }
     }
 
     @Test

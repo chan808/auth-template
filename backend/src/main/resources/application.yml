@@ -66,6 +66,10 @@ cors:
 app:
   # 이메일 인증/비밀번호 재설정 링크의 base URL — 운영 시 APP_BASE_URL 환경변수로 오버라이드
   base-url: ${APP_BASE_URL:http://localhost:3000}
+  http:
+    client-ip:
+      trust-forwarded-headers: false
+      trusted-proxies: []
   mail:
     from: ${MAIL_FROM:noreply@example.com}
   # BreachedPasswordChecker: 비밀번호에 서비스 이름 포함 금지 시 사용

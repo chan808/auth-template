@@ -1,7 +1,7 @@
 package io.github.chan808.authtemplate.member.presentation
 
 import io.github.chan808.authtemplate.common.ApiResponse
-import io.github.chan808.authtemplate.common.clientIp
+import io.github.chan808.authtemplate.common.ClientIpResolver
 import io.github.chan808.authtemplate.member.application.MemberCommandService
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -21,14 +21,17 @@ import org.springframework.web.bind.annotation.RestController
 
 @RestController
 @RequestMapping("/api/members")
-class MemberController(private val memberCommandService: MemberCommandService) {
+class MemberController(
+    private val memberCommandService: MemberCommandService,
+    private val clientIpResolver: ClientIpResolver,
+) {
 
     @PostMapping
     fun signup(
         @RequestBody @Valid request: SignupRequest,
         servletRequest: HttpServletRequest,
     ): ResponseEntity<ApiResponse<MemberResponse>> =
-        ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(memberCommandService.signup(request, servletRequest.clientIp())))
+        ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(memberCommandService.signup(request, clientIpResolver.resolve(servletRequest))))
 
     // principal = memberId(Long): JwtAuthenticationFilter에서 subject를 toLong()으로 설정
     @GetMapping("/me")

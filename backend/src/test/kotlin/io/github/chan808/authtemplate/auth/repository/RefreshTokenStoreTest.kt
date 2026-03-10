@@ -1,9 +1,10 @@
 package io.github.chan808.authtemplate.auth.repository
 
-import io.github.chan808.authtemplate.auth.infrastructure.redis.RefreshTokenStore
 import io.github.chan808.authtemplate.auth.domain.RefreshTokenSession
+import io.github.chan808.authtemplate.auth.infrastructure.redis.RefreshTokenStore
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory
 import org.springframework.data.redis.core.StringRedisTemplate
@@ -19,6 +20,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
+@Tag("integration")
 @Testcontainers
 class RefreshTokenStoreTest {
 
@@ -76,13 +78,15 @@ class RefreshTokenStoreTest {
     }
 
     @Test
-    fun `delete removes session`() {
+    fun `delete session removes token and member index entry`() {
         val sid = UUID.randomUUID().toString()
         store.save(sid, session, ttlSeconds = 3600)
+        store.addSession(1L, sid)
 
-        store.delete(sid)
+        store.deleteSession(1L, sid)
 
         assertNull(store.find(sid))
+        assertFalse(redisTemplate.opsForSet().isMember("MEMBER_SESSIONS:1", sid) ?: false)
     }
 
     @Test
