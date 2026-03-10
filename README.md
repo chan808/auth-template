@@ -1,8 +1,19 @@
 # Auth Template
 
-백엔드 중심 서비스에서 반복되는 회원가입, 로그인, OAuth, 세션 관리, 이메일 인증, 비밀번호 재설정, 관측성 구성을 빠르게 시작하기 위한 인증 템플릿입니다.
+회원가입, 로그인, OAuth, 이메일 인증, 비밀번호 재설정, 세션 관리, 관측성까지 포함한 실무형 인증 템플릿입니다.
 
-이 프로젝트는 단순히 로그인 기능을 붙이는 수준이 아니라, 실제 서비스에서 자주 문제가 되는 세션 무효화, 이메일 인증 회복 동선, 재전송 제한, 관측성, 테스트 가능성까지 포함한 시작점을 목표로 합니다.
+단순히 로그인 API만 붙인 예제가 아니라, 새 프로젝트를 시작할 때 반복되는 인증 기반을 빠르게 가져가면서도 운영과 확장을 고려할 수 있게 만드는 것을 목표로 했습니다.
+
+## Why This Template
+
+- JWT Access Token + Redis Refresh Token 세션 관리
+- 이메일 인증 재전송, 비밀번호 재설정, 미인증 계정 정리 포함
+- Google, Naver, Kakao OAuth 로그인 지원
+- IP/이메일 기준 rate limiting 적용
+- Flyway 기반 스키마 관리
+- unit test / integration test 분리
+- Actuator, Prometheus, Grafana 기반 관측성 구성
+- Spring Modulith 경계 검증 테스트 포함
 
 ## Stack
 
@@ -17,11 +28,9 @@
 - Redis
 - Flyway
 - OAuth2 Client
-- Micrometer
-- Prometheus
-- Testcontainers
-- MockK
-- ArchUnit
+- Spring Modulith
+- Micrometer / Prometheus
+- Testcontainers / MockK
 
 ### Frontend
 
@@ -42,45 +51,13 @@
 - Prometheus
 - Grafana
 
-## What This Template Solves
+## What Matters
 
-- 이메일 회원가입 + 이메일 인증 + 로그인
-- Google, Naver, Kakao OAuth 로그인
-- Access Token + Opaque Refresh Token 기반 인증
-- Redis 기반 세션 인덱스 관리와 전체 세션 무효화
-- 비밀번호 재설정 메일 발송과 재설정 완료
-- 회원가입, 로그인, 인증 메일 재전송 rate limiting
-- 미인증 계정 재가입 복구
-- 미인증 계정 정리 배치
-- Actuator, Prometheus, Grafana 기반 운영 관측성
-
-## Core Design
-
-### Authentication
-
-- Access Token은 JWT로 발급합니다.
-- Refresh Token은 JWT가 아니라 `sid.random` 형식의 랜덤 토큰을 사용합니다.
-- Refresh Token 원문은 저장하지 않고 해시만 Redis에 저장합니다.
-- Redis에 회원별 세션 인덱스를 유지해서 로그아웃, 비밀번호 변경, 회원 탈퇴 시 전체 세션을 즉시 무효화할 수 있습니다.
-
-### Account Recovery
-
-- 이메일 미인증 상태에서 다시 회원가입하면 중복 가입으로 막지 않고 비밀번호를 갱신한 뒤 인증 메일을 다시 발송합니다.
-- 인증 메일 재전송 API를 제공하며, 이전 인증 링크는 새 링크 발급 시 무효화됩니다.
-- 일정 기간 지난 미인증 로컬 계정은 스케줄러가 정리합니다.
-
-### Security
-
-- JWT 시크릿은 외부 환경 변수로만 주입합니다.
-- OAuth 계정과 로컬 계정을 분리 처리합니다.
-- `AFTER_COMMIT` 기반 이벤트 처리로 DB 커밋 이후에 메일 발송과 세션 무효화를 수행합니다.
-- IP, 이메일 단위 rate limit으로 인증 관련 남용을 제어합니다.
-
-### Observability
-
-- `health`, `info`, `prometheus` 엔드포인트를 노출합니다.
-- 인증 성공/실패, 재발급 실패, 회원가입, 비밀번호 변경, 세션 무효화 같은 도메인 이벤트를 메트릭으로 기록합니다.
-- Prometheus와 Grafana를 바로 붙일 수 있는 로컬 구성을 제공합니다.
+- Refresh Token을 JWT로 두지 않고 Redis 세션으로 관리합니다.
+- 비밀번호 변경, 로그아웃, 회원 탈퇴 시 세션 무효화가 가능합니다.
+- 인증 관련 API에 rate limiting을 적용해 기본적인 방어선을 갖춥니다.
+- 운영 환경을 고려해 observability 구성을 템플릿 단계에서 포함합니다.
+- 구조를 나누는 데서 끝나지 않고 Modulith 검증 테스트로 경계를 확인합니다.
 
 ## Project Structure
 
@@ -91,6 +68,7 @@ auth-template/
 |   |-- src/main/resources
 |   |-- src/test/kotlin
 |   |-- docker-compose.yml
+|   |-- docker-compose.storage.yml
 |   |-- .env.example
 |   `-- OBSERVABILITY.md
 |-- frontend/
@@ -100,40 +78,57 @@ auth-template/
 |   `-- .env.example
 |-- infra/
 |   `-- nginx/
-|-- 이력서내용.md
-|-- 포트폴리오내용.md
 `-- README.md
 ```
 
 ## Quick Start
 
-### 1. Local Config
+### 1. Config
 
-- `backend/.env.example`를 `backend/.env`로 복사합니다.
-- `frontend/.env.example`를 `frontend/.env.local`로 복사합니다.
+- `backend/.env.example` -> `backend/.env`
+- `frontend/.env.example` -> `frontend/.env.local`
 
-### 2. Infra
+### 2. Backend Infra
+
+기본:
 
 ```bash
 cd backend
-docker compose up -d mysql redis minio
+docker compose up -d mysql redis
 ```
 
-관측성까지 같이 띄우려면:
+선택형 스토리지(MinIO):
+
+```bash
+cd backend
+docker compose -f docker-compose.yml -f docker-compose.storage.yml up -d minio
+```
+
+관측성:
 
 ```bash
 cd backend
 docker compose --profile observability up -d prometheus grafana
 ```
 
-### 3. Backend
+### 3. Backend Run
+
+기본 실행:
 
 ```bash
 cd backend
 ./gradlew bootRun
 ```
 
-### 4. Frontend
+관측성 프로필로 실행:
+
+```powershell
+cd backend
+$env:SPRING_PROFILES_ACTIVE='observability'
+.\gradlew bootRun
+```
+
+### 4. Frontend Run
 
 ```bash
 cd frontend
@@ -155,9 +150,13 @@ pnpm lint
 pnpm build
 ```
 
+## Notes
+
+- Local Prometheus scraping requires the `observability` profile on the backend.
+- MinIO is optional and separated from the default compose file.
+- The current OAuth login flow still assumes a single-server deployment because the authorization request and locale handoff use the server session. For multi-instance deployment, move to Redis-backed session storage or a stateless handoff design.
+
 ## Documents
 
 - Backend observability guide: [backend/OBSERVABILITY.md](backend/OBSERVABILITY.md)
-- Backend note: local Prometheus scraping requires `SPRING_PROFILES_ACTIVE=observability`, and the current OAuth login flow still assumes a single-server deployment until session storage is externalized.
-- Resume write-up: [이력서내용.md](이력서내용.md)
-- Portfolio write-up: [포트폴리오내용.md](포트폴리오내용.md)
+- Frontend notes: [frontend/README.md](frontend/README.md)
