@@ -5,6 +5,7 @@ import io.github.chan808.authtemplate.auth.infrastructure.oauth2.CustomOidcUserS
 import io.github.chan808.authtemplate.auth.infrastructure.oauth2.LocaleAwareOAuth2AuthorizationRequestResolver
 import io.github.chan808.authtemplate.auth.infrastructure.oauth2.OAuth2FailureHandler
 import io.github.chan808.authtemplate.auth.infrastructure.oauth2.OAuth2SuccessHandler
+import io.github.chan808.authtemplate.member.api.MemberApi
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
@@ -30,6 +31,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 @EnableMethodSecurity
 class SecurityConfig(
     private val jwtProvider: JwtProvider,
+    private val memberApi: MemberApi,
     private val securityExceptionHandler: SecurityExceptionHandler,
     @Value("\${cors.allowed-origin:http://localhost:3000}") private val allowedOrigin: String,
     @Value("\${cookie.secure:false}") private val cookieSecure: Boolean,
@@ -89,7 +91,7 @@ class SecurityConfig(
                 }
                 it.anyRequest().authenticated()
             }
-            .addFilterBefore(JwtAuthenticationFilter(jwtProvider), UsernamePasswordAuthenticationFilter::class.java)
+            .addFilterBefore(JwtAuthenticationFilter(jwtProvider, memberApi), UsernamePasswordAuthenticationFilter::class.java)
             .exceptionHandling {
                 it.authenticationEntryPoint(securityExceptionHandler)
                 it.accessDeniedHandler(securityExceptionHandler)

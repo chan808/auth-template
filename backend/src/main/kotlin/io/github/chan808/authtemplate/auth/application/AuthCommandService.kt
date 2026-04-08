@@ -74,7 +74,7 @@ class AuthCommandService(
         tokenStore.addSession(member.id, sid)
         domainMetrics.recordLoginSuccess()
 
-        return accessTokenPort.generateAccessToken(member.id, member.role) to rt
+        return accessTokenPort.generateAccessToken(member.id, member.role, member.tokenVersion) to rt
     }
 
     fun reissue(rtToken: String): Pair<String, String> {
@@ -112,7 +112,13 @@ class AuthCommandService(
             tokenStore.save(sid, session.copy(tokenHash = hashToken(newRt)), 7L * 24 * 3600)
             domainMetrics.recordRefreshTokenReissueSuccess()
 
-            return accessTokenPort.generateAccessToken(session.memberId, session.role) to newRt
+            val member = memberApi.findAuthMemberById(session.memberId) ?: run {
+                tokenStore.deleteSession(session.memberId, sid)
+                domainMetrics.recordRefreshTokenReissueFailure("member_not_found")
+                throw AuthException(ErrorCode.REFRESH_TOKEN_NOT_FOUND)
+            }
+
+            return accessTokenPort.generateAccessToken(member.id, member.role, member.tokenVersion) to newRt
         } finally {
             tokenStore.releaseLock(sid)
         }
@@ -126,20 +132,22 @@ class AuthCommandService(
         domainMetrics.recordLogout()
     }
 
-    fun issueTokensForOAuth(memberId: Long, role: String = "USER"): Pair<String, String> {
+    fun issueTokensForOAuth(memberId: Long): Pair<String, String> {
+        val member = memberApi.findAuthMemberById(memberId)
+            ?: throw AuthException(ErrorCode.MEMBER_NOT_FOUND)
         val (sid, rt) = generateRefreshToken()
         tokenStore.save(
             sid = sid,
             session = RefreshTokenSession(
                 memberId = memberId,
-                role = role,
+                role = member.role,
                 tokenHash = hashToken(rt),
                 absoluteExpiryEpoch = Instant.now().plusSeconds(30L * 24 * 3600).epochSecond,
             ),
             ttlSeconds = 7L * 24 * 3600,
         )
         tokenStore.addSession(memberId, sid)
-        return accessTokenPort.generateAccessToken(memberId, role) to rt
+        return accessTokenPort.generateAccessToken(member.id, member.role, member.tokenVersion) to rt
     }
 
     override fun invalidateAllSessions(memberId: Long) {

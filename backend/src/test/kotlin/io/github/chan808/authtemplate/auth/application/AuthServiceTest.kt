@@ -56,7 +56,7 @@ class AuthCommandServiceTest {
         every { loginRateLimitService.check(any(), any()) } just Runs
         every { memberApi.findAuthMemberByEmail("test@example.com") } returns memberView
         every { passwordEncoder.matches(any(), any()) } returns true
-        every { accessTokenPort.generateAccessToken(1L, "USER") } returns "access-token"
+        every { accessTokenPort.generateAccessToken(1L, "USER", 0L) } returns "access-token"
         every { tokenStore.save(any(), any(), any()) } just Runs
         every { tokenStore.addSession(any(), any()) } just Runs
 

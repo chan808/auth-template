@@ -8,6 +8,8 @@ import io.github.chan808.authtemplate.common.ClientIpResolver
 import io.github.chan808.authtemplate.common.ErrorCode
 import io.github.chan808.authtemplate.common.MemberException
 import io.github.chan808.authtemplate.common.RateLimitException
+import io.github.chan808.authtemplate.member.api.AuthMemberView
+import io.github.chan808.authtemplate.member.api.MemberApi
 import io.github.chan808.authtemplate.member.application.MemberCommandService
 import io.github.chan808.authtemplate.member.presentation.MemberController
 import io.github.chan808.authtemplate.member.presentation.MemberResponse
@@ -45,6 +47,7 @@ class MemberControllerTest {
     lateinit var mockMvc: MockMvc
 
     @MockkBean lateinit var memberCommandService: MemberCommandService
+    @MockkBean lateinit var memberApi: MemberApi
     @MockkBean lateinit var clientIpResolver: ClientIpResolver
     @MockkBean lateinit var jwtProvider: JwtProvider
 
@@ -65,7 +68,17 @@ class MemberControllerTest {
         val claims = mockk<Claims>()
         every { claims.subject } returns "1"
         every { claims["role"] } returns "USER"
+        every { claims["tokenVersion"] } returns 0L
         every { jwtProvider.validate("test-token") } returns claims
+        every { memberApi.findAuthMemberById(1L) } returns AuthMemberView(
+            id = 1L,
+            email = "test@example.com",
+            encodedPassword = "encoded-password",
+            role = "USER",
+            tokenVersion = 0L,
+            emailVerified = true,
+            provider = null,
+        )
     }
 
     @Test
@@ -134,6 +147,26 @@ class MemberControllerTest {
     fun `get my info without auth returns 401`() {
         mockMvc.get("/api/members/me")
             .andExpect { status { isUnauthorized() } }
+    }
+
+    @Test
+    fun `get my info with stale access token returns 401`() {
+        every { memberApi.findAuthMemberById(1L) } returns AuthMemberView(
+            id = 1L,
+            email = "test@example.com",
+            encodedPassword = "encoded-password",
+            role = "USER",
+            tokenVersion = 1L,
+            emailVerified = true,
+            provider = null,
+        )
+
+        mockMvc.get("/api/members/me") {
+            header("Authorization", authHeader)
+        }.andExpect {
+            status { isUnauthorized() }
+            jsonPath("$.title") { value("TOKEN_INVALID") }
+        }
     }
 
     @Test

@@ -18,24 +18,25 @@ class JwtProviderTest {
     private val jwtProvider = JwtProvider(props)
 
     @Test
-    fun `AT 생성 후 검증하면 memberId와 role을 정확히 추출한다`() {
-        val token = jwtProvider.generateAccessToken(1L, "USER")
+    fun `access token contains member identity role and token version`() {
+        val token = jwtProvider.generateAccessToken(1L, "USER", 3L)
         val claims = jwtProvider.validate(token)
 
         assertEquals("1", claims.subject)
         assertEquals("USER", claims["role"])
+        assertEquals(3, claims["tokenVersion"])
     }
 
     @Test
-    fun `변조된 토큰 검증 시 JwtException이 발생한다`() {
-        val token = jwtProvider.generateAccessToken(1L, "USER")
+    fun `tampered token throws jwt exception`() {
+        val token = jwtProvider.generateAccessToken(1L, "USER", 0L)
         assertThrows<JwtException> { jwtProvider.validate(token.dropLast(10) + "TAMPERED!!") }
     }
 
     @Test
-    fun `만료된 토큰 검증 시 ExpiredJwtException이 발생한다`() {
+    fun `expired token throws expired jwt exception`() {
         val expiredProvider = JwtProvider(props.copy(accessTokenExpiry = -1))
-        val token = expiredProvider.generateAccessToken(1L, "USER")
+        val token = expiredProvider.generateAccessToken(1L, "USER", 0L)
         assertThrows<ExpiredJwtException> { jwtProvider.validate(token) }
     }
 }
