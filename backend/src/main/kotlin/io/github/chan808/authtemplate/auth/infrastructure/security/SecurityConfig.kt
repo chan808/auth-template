@@ -33,6 +33,7 @@ class SecurityConfig(
     private val securityExceptionHandler: SecurityExceptionHandler,
     @Value("\${cors.allowed-origin:http://localhost:3000}") private val allowedOrigin: String,
     @Value("\${cookie.secure:false}") private val cookieSecure: Boolean,
+    @Value("\${app.auth.oauth.enabled:true}") private val oauthEnabled: Boolean,
     @Value("\${management.endpoints.web.public.info:false}") private val publicInfoEndpoint: Boolean,
     @Value("\${management.endpoints.web.public.prometheus:false}") private val publicPrometheusEndpoint: Boolean,
 ) {
@@ -72,7 +73,9 @@ class SecurityConfig(
                 it.requestMatchers("/api/auth/**").permitAll()
                 it.requestMatchers(HttpMethod.POST, "/api/members").permitAll()
                 it.requestMatchers("/api-docs/**", "/swagger-ui/**").permitAll()
-                it.requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
+                if (oauthEnabled) {
+                    it.requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
+                }
                 it.requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                 if (publicInfoEndpoint) {
                     it.requestMatchers("/actuator/info").permitAll()
@@ -93,6 +96,7 @@ class SecurityConfig(
             }
 
         if (
+            oauthEnabled &&
             clientRegistrationRepository != null &&
             customOAuth2UserService != null &&
             customOidcUserService != null &&

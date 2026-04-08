@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/shared/components/ui/button";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8080";
+const OAUTH_ENABLED = process.env.NEXT_PUBLIC_OAUTH_ENABLED !== "false";
 const ENABLED_PROVIDERS = (process.env.NEXT_PUBLIC_OAUTH_PROVIDERS ?? "")
   .split(",")
   .map((provider) => provider.trim().toLowerCase())
@@ -35,7 +36,7 @@ export default function SocialLoginButtons({ returnTo }: SocialLoginButtonsProps
     window.location.assign(url.toString());
   };
 
-  if (visibleProviders.length === 0) {
+  if (!OAUTH_ENABLED || visibleProviders.length === 0) {
     return null;
   }
 

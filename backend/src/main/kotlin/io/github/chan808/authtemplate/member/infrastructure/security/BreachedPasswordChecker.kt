@@ -12,6 +12,7 @@ import java.security.MessageDigest
 @Component
 class BreachedPasswordChecker(
     @Value("\${app.name:application}") private val serviceName: String,
+    @Value("\${app.security.password.hibp.enabled:true}") private val hibpEnabled: Boolean,
 ) {
     private val restClient = RestClient.builder()
         .requestFactory(
@@ -26,6 +27,9 @@ class BreachedPasswordChecker(
 
     fun check(password: String, email: String? = null) {
         checkContextSpecific(password, email)
+        if (!hibpEnabled) {
+            return
+        }
         checkHibp(password)
     }
 

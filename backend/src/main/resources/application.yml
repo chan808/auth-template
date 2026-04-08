@@ -88,12 +88,19 @@ cors:
 app:
   base-url: ${APP_BASE_URL:http://localhost:3000}
   default-locale: ${APP_DEFAULT_LOCALE:ko}
+  auth:
+    oauth:
+      enabled: ${APP_AUTH_OAUTH_ENABLED:true}
   http:
     client-ip:
       trust-forwarded-headers: false
       trusted-proxies: []
   mail:
     from: ${MAIL_FROM:noreply@example.com}
+  security:
+    password:
+      hibp:
+        enabled: ${APP_SECURITY_PASSWORD_HIBP_ENABLED:true}
   member:
     cleanup:
       unverified:

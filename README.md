@@ -155,6 +155,7 @@ pnpm build
 
 - Redis is a core dependency in this starter.
 - OAuth is optional, but email login remains the baseline path.
+- OAuth and HIBP external lookup can be controlled with explicit feature flags.
 - The current OAuth locale and return-to handoff uses the server session during the OAuth round-trip.
 - The bundled `dashboard` route is a sample authenticated area and should usually be replaced in a real project.
 

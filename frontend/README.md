@@ -19,6 +19,7 @@ Important defaults:
 - email login and OAuth callback follow the same post-login redirect rule.
 - when `returnTo` is missing, the frontend uses `NEXT_PUBLIC_AUTH_HOME_PATH`.
 - when that variable is missing, fallback is `/{locale}/dashboard`.
+- OAuth UI can be disabled with `NEXT_PUBLIC_OAUTH_ENABLED=false`.
 
 인증/회원 기능을 실제 사용자 흐름으로 검증하기 위한 Next.js 애플리케이션이다.  
 단순 API 호출 화면이 아니라 로그인 상태 관리, Access Token 메모리 저장, Refresh Token 재발급, OAuth 콜백, i18n 라우팅까지 포함한다.
@@ -51,7 +52,9 @@ Important defaults:
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:8080
 NEXT_PUBLIC_BACKEND_URL=http://localhost:8080
+NEXT_PUBLIC_OAUTH_ENABLED=true
 NEXT_PUBLIC_OAUTH_PROVIDERS=google
+NEXT_PUBLIC_AUTH_HOME_PATH=/dashboard
 ```
 
 ```bash
