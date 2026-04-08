@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
 import { authApi } from "@/features/auth/api/authApi";
 import { useAuthStore } from "@/features/auth/stores/authStore";
+import { resolvePostLoginPath } from "@/features/auth/utils/navigation";
 
 export default function LocaleRootPage() {
   const router = useRouter();
@@ -17,7 +18,7 @@ export default function LocaleRootPage() {
     hasChecked.current = true;
 
     if (useAuthStore.getState().accessToken) {
-      router.replace(`/${locale}/dashboard`);
+      router.replace(resolvePostLoginPath(locale));
       return;
     }
 
@@ -25,7 +26,7 @@ export default function LocaleRootPage() {
       .reissue()
       .then(({ data }) => {
         setAccessToken(data.data!.accessToken);
-        router.replace(`/${locale}/dashboard`);
+        router.replace(resolvePostLoginPath(locale));
       })
       .catch(() => {
         clearAuth();

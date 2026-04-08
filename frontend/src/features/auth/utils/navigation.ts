@@ -18,8 +18,22 @@ export function normalizeReturnTo(value?: string | null): string | null {
   return value.startsWith("/") && !value.startsWith("//") ? value : null;
 }
 
+function resolveAuthenticatedHomePath(locale: string): string {
+  const configured = normalizeReturnTo(process.env.NEXT_PUBLIC_AUTH_HOME_PATH);
+
+  if (!configured || configured === "/") {
+    return `/${locale}/dashboard`;
+  }
+
+  if (configured.startsWith(`/${locale}/`)) {
+    return configured;
+  }
+
+  return `/${locale}${configured}`;
+}
+
 export function resolvePostLoginPath(locale: string, returnTo?: string | null): string {
-  return normalizeReturnTo(returnTo) ?? `/${locale}/dashboard`;
+  return normalizeReturnTo(returnTo) ?? resolveAuthenticatedHomePath(locale);
 }
 
 export function buildCurrentPath(

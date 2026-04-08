@@ -1,63 +1,66 @@
 # Auth Template
 
-회원가입, 로그인, OAuth, 이메일 인증, 비밀번호 재설정, 세션 관리, 관측성까지 포함한 실무형 인증 템플릿입니다.
+Production-oriented auth starter for projects that need a strong account system from day one.
 
-단순히 로그인 API만 붙인 예제가 아니라, 새 프로젝트를 시작할 때 반복되는 인증 기반을 빠르게 가져가면서도 운영과 확장을 고려할 수 있게 만드는 것을 목표로 했습니다.
+This repository is intentionally not a minimal boilerplate. It is an opinionated auth starter with:
 
-## Why This Template
+- email-first accounts
+- optional OAuth login
+- email verification
+- password reset
+- JWT access tokens
+- Redis-backed refresh sessions
+- baseline rate limiting
+- observability-ready backend defaults
 
-- JWT Access Token + Redis Refresh Token 세션 관리
-- 이메일 인증 재전송, 비밀번호 재설정, 미인증 계정 정리 포함
-- Google, Naver, Kakao OAuth 로그인 지원
-- IP/이메일 기준 rate limiting 적용
-- Flyway 기반 스키마 관리
-- unit test / integration test 분리
-- Actuator, Prometheus, Grafana 기반 관측성 구성
-- Spring Modulith 경계 검증 테스트 포함
+## Positioning
 
-## Stack
+Use this template when authentication and member management should be part of the real product foundation.
+
+Good fit:
+
+- customer-facing web products
+- collaboration tools with invitations and protected deep links
+- services that want email login plus optional OAuth convenience
+- teams that are comfortable with MySQL and Redis as default infra
+
+Less ideal:
+
+- throwaway prototypes
+- projects that want no Redis dependency
+- products that want OAuth-only identity and nothing else
+
+## Core Principles
+
+- Email is the primary account identifier.
+- OAuth is optional convenience, not the only supported access path.
+- Protected routes should preserve `returnTo`.
+- Post-login navigation should use `returnTo` first, then the configured authenticated home path.
+- Bundled authenticated pages are examples, not mandatory product structure.
+
+## Included
 
 ### Backend
 
-- Kotlin
-- JDK 21
-- Spring Boot 4
+- Kotlin + Spring Boot 4
 - Spring Security
-- Spring Data JPA
-- MySQL
-- Redis
-- Flyway
-- OAuth2 Client
-- Spring Modulith
-- Micrometer / Prometheus
-- Testcontainers / MockK
+- Spring Modulith boundaries
+- MySQL + Flyway
+- Redis for refresh sessions, verification tokens, password reset tokens, and rate limiting
+- email verification and password reset flows
+- optional Google / Naver / Kakao OAuth
+- Actuator + Micrometer + Prometheus + Grafana
+- unit tests and integration tests
 
 ### Frontend
 
-- Next.js 16
-- React 19
-- TypeScript
+- Next.js 16 + React 19
 - next-intl
 - TanStack Query
 - Zustand
-- Axios
-- Tailwind CSS 4
-- shadcn/ui
-
-### Infra
-
-- Docker Compose
-- Nginx
-- Prometheus
-- Grafana
-
-## What Matters
-
-- Refresh Token을 JWT로 두지 않고 Redis 세션으로 관리합니다.
-- 비밀번호 변경, 로그아웃, 회원 탈퇴 시 세션 무효화가 가능합니다.
-- 인증 관련 API에 rate limiting을 적용해 기본적인 방어선을 갖춥니다.
-- 운영 환경을 고려해 observability 구성을 템플릿 단계에서 포함합니다.
-- 구조를 나누는 데서 끝나지 않고 Modulith 검증 테스트로 경계를 확인합니다.
+- auth pages for login, signup, forgot password, reset password, verify email, and OAuth callback
+- `returnTo` support for protected pages and invitation-style deep links
+- sample authenticated account pages
 
 ## Project Structure
 
@@ -75,9 +78,8 @@ auth-template/
 |   |-- src
 |   |-- messages
 |   |-- public
-|   `-- .env.example
-|-- infra/
-|   `-- nginx/
+|   |-- .env.example
+|   `-- README.md
 `-- README.md
 ```
 
@@ -85,50 +87,40 @@ auth-template/
 
 ### 1. Config
 
-- `backend/.env.example` -> `backend/.env`
-- `frontend/.env.example` -> `frontend/.env.local`
+- copy `backend/.env.example` to `backend/.env`
+- copy `frontend/.env.example` to `frontend/.env.local`
 
-### 2. Backend Infra
-
-기본:
+### 2. Infra
 
 ```bash
 cd backend
 docker compose up -d mysql redis
 ```
 
-선택형 스토리지(MinIO):
-
-```bash
-cd backend
-docker compose -f docker-compose.yml -f docker-compose.storage.yml up -d minio
-```
-
-관측성:
+Optional observability:
 
 ```bash
 cd backend
 docker compose --profile observability up -d prometheus grafana
 ```
 
-### 3. Backend Run
+Optional object storage:
 
-기본 실행:
+```bash
+cd backend
+docker compose -f docker-compose.yml -f docker-compose.storage.yml up -d minio
+```
+
+### 3. Run
+
+Backend:
 
 ```bash
 cd backend
 ./gradlew bootRun
 ```
 
-관측성 프로필로 실행:
-
-```powershell
-cd backend
-$env:SPRING_PROFILES_ACTIVE='observability'
-.\gradlew bootRun
-```
-
-### 4. Frontend Run
+Frontend:
 
 ```bash
 cd frontend
@@ -136,27 +128,37 @@ pnpm install
 pnpm dev
 ```
 
-## Test
+## Verify
+
+Backend unit tests:
 
 ```bash
 cd backend
 ./gradlew test
+```
+
+Backend integration tests:
+
+```bash
+cd backend
 ./gradlew integrationTest
 ```
 
+Frontend:
+
 ```bash
 cd frontend
-pnpm lint
 pnpm build
 ```
 
 ## Notes
 
-- Local Prometheus scraping requires the `observability` profile on the backend.
-- MinIO is optional and separated from the default compose file.
-- The current OAuth login flow still assumes a single-server deployment because the authorization request and locale handoff use the server session. For multi-instance deployment, move to Redis-backed session storage or a stateless handoff design.
+- Redis is a core dependency in this starter.
+- OAuth is optional, but email login remains the baseline path.
+- The current OAuth locale and return-to handoff uses the server session during the OAuth round-trip.
+- The bundled `dashboard` route is a sample authenticated area and should usually be replaced in a real project.
 
 ## Documents
 
-- Backend observability guide: [backend/OBSERVABILITY.md](backend/OBSERVABILITY.md)
-- Frontend notes: [frontend/README.md](frontend/README.md)
+- [backend/OBSERVABILITY.md](backend/OBSERVABILITY.md)
+- [frontend/README.md](frontend/README.md)
