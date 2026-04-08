@@ -14,6 +14,7 @@ class MemberEventListenerTest {
     private val listener = MemberEventListener(
         mailSender = mailSender,
         baseUrl = "http://localhost:3000",
+        defaultLocale = "ko",
     )
 
     @Test
@@ -26,7 +27,7 @@ class MemberEventListenerTest {
             mailSender.send(
                 "test@example.com",
                 "Verify your email",
-                match { it.contains("http://localhost:3000/verify-email?token=token-123") },
+                match { it.contains("http://localhost:3000/ko/verify-email?token=token-123") },
             )
         }
     }

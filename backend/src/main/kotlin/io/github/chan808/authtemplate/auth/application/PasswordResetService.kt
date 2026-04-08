@@ -9,6 +9,7 @@ import io.github.chan808.authtemplate.member.api.MemberApi
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
+import org.springframework.web.util.UriComponentsBuilder
 import java.util.UUID
 
 @Service
@@ -19,6 +20,7 @@ class PasswordResetService(
     private val passwordResetRateLimitService: PasswordResetRateLimitService,
     private val domainMetrics: DomainMetrics,
     @Value("\${app.base-url}") private val baseUrl: String,
+    @Value("\${app.default-locale:ko}") private val defaultLocale: String,
 ) {
     private val log = LoggerFactory.getLogger(PasswordResetService::class.java)
 
@@ -40,7 +42,12 @@ class PasswordResetService(
         val token = UUID.randomUUID().toString()
         passwordResetStore.save(token, member.id)
 
-        val resetLink = "$baseUrl/reset-password?token=$token"
+        val resetLink = UriComponentsBuilder.fromUriString(baseUrl)
+            .pathSegment(defaultLocale, "reset-password")
+            .queryParam("token", token)
+            .build()
+            .toUriString()
+
         val body = """
             |We received a password reset request for your account.
             |

@@ -3,21 +3,23 @@ import axios, {
   InternalAxiosRequestConfig,
 } from "axios";
 import { useAuthStore } from "@/features/auth/stores/authStore";
+import {
+  buildAuthPageHref,
+  buildCurrentPath,
+  resolveLocaleFromPathname,
+} from "@/features/auth/utils/navigation";
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
-  withCredentials: true, // RT HttpOnly 쿠키 자동 전송
+  withCredentials: true,
 });
 
-// 요청마다 메모리의 AT를 Authorization 헤더에 주입
 api.interceptors.request.use((config) => {
   const token = useAuthStore.getState().accessToken;
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
-// 401 수신 시 reissue → 원래 요청 재시도
-// 동시에 여러 요청이 401을 받으면 reissue는 1번만 실행되고 나머지는 큐에서 대기
 let isRefreshing = false;
 let failedQueue: Array<{
   resolve: (token: string) => void;
@@ -82,9 +84,21 @@ api.interceptors.response.use(
     } catch (refreshError) {
       processQueue(refreshError, null);
       useAuthStore.getState().clearAuth();
-      // 현재 locale prefix를 유지하며 로그인 페이지로 이동
-      const locale = window.location.pathname.split("/")[1] || "ko";
-      window.location.replace(`/${locale}/login`);
+
+      const locale = resolveLocaleFromPathname(window.location.pathname);
+      const returnTo = buildCurrentPath(
+        window.location.pathname,
+        new URLSearchParams(window.location.search),
+      );
+
+      window.location.replace(
+        buildAuthPageHref({
+          locale,
+          page: "login",
+          returnTo,
+        }),
+      );
+
       return Promise.reject(refreshError);
     } finally {
       isRefreshing = false;

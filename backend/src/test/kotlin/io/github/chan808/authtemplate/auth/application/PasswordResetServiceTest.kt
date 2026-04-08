@@ -32,6 +32,7 @@ class PasswordResetServiceTest {
         passwordResetRateLimitService,
         domainMetrics,
         "https://example.com",
+        "ko",
     )
 
     private val localMember = AuthMemberView(
@@ -61,7 +62,7 @@ class PasswordResetServiceTest {
             mailSender.send(
                 "test@example.com",
                 "Password reset",
-                match { it.contains("https://example.com/reset-password?token=") },
+                match { it.contains("https://example.com/ko/reset-password?token=") },
             )
         }
     }

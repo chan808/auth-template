@@ -1,3 +1,5 @@
+import { routing } from "@/i18n/routing";
+
 type AuthPage = "login" | "signup" | "forgot-password";
 
 type SearchParamsLike = {
@@ -42,6 +44,19 @@ export function buildCurrentPath(
 ): string {
   const query = searchParams?.toString();
   return query ? `${pathname}?${query}` : pathname;
+}
+
+export function resolveLocaleFromPathname(pathname: string): string {
+  const firstSegment = pathname.split("/").filter(Boolean)[0];
+
+  if (
+    firstSegment &&
+    (routing.locales as readonly string[]).includes(firstSegment)
+  ) {
+    return firstSegment;
+  }
+
+  return routing.defaultLocale;
 }
 
 export function buildAuthPageHref({
