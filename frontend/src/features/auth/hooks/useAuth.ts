@@ -5,16 +5,17 @@ import { useLocale } from "next-intl";
 import { useAuthStore } from "../stores/authStore";
 import { authApi } from "../api/authApi";
 import { LoginRequest } from "../types/auth";
+import { resolvePostLoginPath } from "../utils/navigation";
 
 export function useAuth() {
   const router = useRouter();
   const locale = useLocale();
   const { accessToken, setAccessToken, clearAuth } = useAuthStore();
 
-  const login = async (data: LoginRequest) => {
+  const login = async (data: LoginRequest, options?: { returnTo?: string | null }) => {
     const res = await authApi.login(data);
     setAccessToken(res.data.data!.accessToken);
-    router.push(`/${locale}/dashboard`);
+    router.push(resolvePostLoginPath(locale, options?.returnTo));
   };
 
   const logout = async () => {

@@ -46,4 +46,38 @@ class LocaleAwareOAuth2AuthorizationRequestResolverTest {
 
         assertEquals("ko", request.getSession(false)!!.getAttribute(LocaleAwareOAuth2AuthorizationRequestResolver.SESSION_KEY))
     }
+
+    @Test
+    fun `stores safe returnTo in session`() {
+        val request = MockHttpServletRequest().apply {
+            method = "GET"
+            requestURI = "/oauth2/authorization/google"
+            setParameter("returnTo", "/rooms/alpha?tab=chat")
+        }
+        every { delegate.resolve(any<HttpServletRequest>(), any<String>()) } returns authorizationRequest
+
+        resolver.resolve(request, "google")
+
+        assertEquals(
+            "/rooms/alpha?tab=chat",
+            request.getSession(false)!!.getAttribute(LocaleAwareOAuth2AuthorizationRequestResolver.RETURN_TO_SESSION_KEY),
+        )
+    }
+
+    @Test
+    fun `ignores unsafe returnTo`() {
+        val request = MockHttpServletRequest().apply {
+            method = "GET"
+            requestURI = "/oauth2/authorization/google"
+            setParameter("returnTo", "https://evil.example.com")
+        }
+        every { delegate.resolve(any<HttpServletRequest>(), any<String>()) } returns authorizationRequest
+
+        resolver.resolve(request, "google")
+
+        assertEquals(
+            null,
+            request.getSession(false)!!.getAttribute(LocaleAwareOAuth2AuthorizationRequestResolver.RETURN_TO_SESSION_KEY),
+        )
+    }
 }

@@ -16,7 +16,6 @@ import io.mockk.verify
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.springframework.context.ApplicationEventPublisher
-import java.util.Optional
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
@@ -56,7 +55,7 @@ class EmailVerificationServiceTest {
     @Test
     fun `유효한 토큰으로 verify 호출 시 emailVerified가 true로 변경된다`() {
         every { emailVerificationStore.findMemberId("valid-token") } returns 1L
-        every { memberRepository.findById(1L) } returns Optional.of(member)
+        every { memberRepository.findByIdAndWithdrawnAtIsNull(1L) } returns member
         every { emailVerificationStore.delete("valid-token") } just Runs
 
         service.verify("valid-token")
@@ -77,7 +76,7 @@ class EmailVerificationServiceTest {
     fun `이미 인증된 이메일로 verify 호출 시 EMAIL_ALREADY_VERIFIED 예외가 발생한다`() {
         val verifiedMember = Member(email = "test@example.com", emailVerified = true, id = 1L)
         every { emailVerificationStore.findMemberId("token") } returns 1L
-        every { memberRepository.findById(1L) } returns Optional.of(verifiedMember)
+        every { memberRepository.findByIdAndWithdrawnAtIsNull(1L) } returns verifiedMember
 
         val ex = assertThrows<MemberException> { service.verify("token") }
         assertEquals(ErrorCode.EMAIL_ALREADY_VERIFIED, ex.errorCode)
@@ -86,7 +85,7 @@ class EmailVerificationServiceTest {
     @Test
     fun `resend issues a new verification mail for unverified local account`() {
         every { resendRateLimitService.check("127.0.0.1", "test@example.com") } just Runs
-        every { memberRepository.findByEmail("test@example.com") } returns member
+        every { memberRepository.findByEmailAndWithdrawnAtIsNull("test@example.com") } returns member
         every { emailVerificationStore.save(any(), 1L, any()) } just Runs
         every { eventPublisher.publishEvent(any<Any>()) } just Runs
 
@@ -101,7 +100,7 @@ class EmailVerificationServiceTest {
     fun `resend ignores already verified account`() {
         val verifiedMember = Member(email = "test@example.com", emailVerified = true, id = 1L)
         every { resendRateLimitService.check("127.0.0.1", "test@example.com") } just Runs
-        every { memberRepository.findByEmail("test@example.com") } returns verifiedMember
+        every { memberRepository.findByEmailAndWithdrawnAtIsNull("test@example.com") } returns verifiedMember
 
         service.resend("test@example.com", "127.0.0.1")
 

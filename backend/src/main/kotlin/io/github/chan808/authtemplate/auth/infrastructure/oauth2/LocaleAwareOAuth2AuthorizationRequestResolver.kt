@@ -20,11 +20,17 @@ class LocaleAwareOAuth2AuthorizationRequestResolver(
             ?.takeIf { SUPPORTED_LOCALE_PATTERN.matches(it) }
             ?: defaultLocale
 
-        request.getSession(true).setAttribute(SESSION_KEY, locale)
+        val session = request.getSession(true)
+        session.setAttribute(SESSION_KEY, locale)
+        session.setAttribute(RETURN_TO_SESSION_KEY, normalizeReturnTo(request.getParameter("returnTo")))
     }
 
     companion object {
         const val SESSION_KEY = "oauth2.locale"
+        const val RETURN_TO_SESSION_KEY = "oauth2.returnTo"
         private val SUPPORTED_LOCALE_PATTERN = Regex("^[a-zA-Z]{2,8}(?:-[a-zA-Z0-9]{2,8})?$")
+
+        fun normalizeReturnTo(value: String?): String? =
+            value?.takeIf { it.startsWith("/") && !it.startsWith("//") }
     }
 }

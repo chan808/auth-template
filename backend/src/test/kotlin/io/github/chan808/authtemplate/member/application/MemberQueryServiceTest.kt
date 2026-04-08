@@ -18,7 +18,6 @@ import org.junit.jupiter.api.assertThrows
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.transaction.annotation.Transactional
-import java.util.Optional
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
@@ -49,7 +48,7 @@ class MemberQueryServiceTest {
             emailVerified = true,
             id = 1L,
         )
-        every { memberRepository.findById(1L) } returns Optional.of(oauthMember)
+        every { memberRepository.findByIdAndWithdrawnAtIsNull(1L) } returns oauthMember
 
         val ex = assertThrows<AuthException> { service.resetPassword(1L, "NewPass1!") }
 
@@ -65,7 +64,7 @@ class MemberQueryServiceTest {
             emailVerified = true,
             id = 1L,
         )
-        every { memberRepository.findById(1L) } returns Optional.of(member)
+        every { memberRepository.findByIdAndWithdrawnAtIsNull(1L) } returns member
         every { breachedPasswordChecker.check(any(), any()) } just Runs
         every { passwordEncoder.encode("NewPass1!") } returns "encoded-password"
         every { eventPublisher.publishEvent(any<Any>()) } just Runs

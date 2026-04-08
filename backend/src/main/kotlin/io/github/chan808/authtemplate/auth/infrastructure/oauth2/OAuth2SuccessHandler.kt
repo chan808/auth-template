@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.security.core.Authentication
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler
 import org.springframework.stereotype.Component
+import org.springframework.web.util.UriComponentsBuilder
 import java.util.UUID
 
 @Component
@@ -44,8 +45,19 @@ class OAuth2SuccessHandler(
         oAuthCodeStore.save(code, accessToken)
 
         val locale = resolveLocale(request)
+        val returnTo = resolveReturnTo(request)
         log.info("[AUTH] OAuth2 login success memberId={} provider={} locale={}", oAuth2User.memberId, oAuth2User.provider, locale)
-        response.sendRedirect("$frontendBaseUrl/$locale/auth/callback?code=$code")
+        response.sendRedirect(
+            UriComponentsBuilder.fromUriString("$frontendBaseUrl/$locale/auth/callback")
+                .queryParam("code", code)
+                .apply {
+                    if (returnTo != null) {
+                        queryParam("returnTo", returnTo)
+                    }
+                }
+                .build()
+                .toUriString(),
+        )
     }
 
     private fun resolveLocale(request: HttpServletRequest): String {
@@ -53,5 +65,12 @@ class OAuth2SuccessHandler(
         val locale = session.getAttribute(LocaleAwareOAuth2AuthorizationRequestResolver.SESSION_KEY) as? String
         session.removeAttribute(LocaleAwareOAuth2AuthorizationRequestResolver.SESSION_KEY)
         return locale ?: defaultLocale
+    }
+
+    private fun resolveReturnTo(request: HttpServletRequest): String? {
+        val session = request.getSession(false) ?: return null
+        val returnTo = session.getAttribute(LocaleAwareOAuth2AuthorizationRequestResolver.RETURN_TO_SESSION_KEY) as? String
+        session.removeAttribute(LocaleAwareOAuth2AuthorizationRequestResolver.RETURN_TO_SESSION_KEY)
+        return LocaleAwareOAuth2AuthorizationRequestResolver.normalizeReturnTo(returnTo)
     }
 }

@@ -17,7 +17,7 @@ class UnverifiedMemberCleanupService(
 
     @Transactional
     fun cleanupOlderThan(cutoff: LocalDateTime): Int {
-        val targets = memberRepository.findAllByEmailVerifiedFalseAndProviderIsNullAndCreatedAtBefore(cutoff)
+        val targets = memberRepository.findAllByEmailVerifiedFalseAndProviderIsNullAndWithdrawnAtIsNullAndCreatedAtBefore(cutoff)
         if (targets.isEmpty()) return 0
 
         targets.forEach { emailVerificationStore.deleteByMemberId(it.id) }

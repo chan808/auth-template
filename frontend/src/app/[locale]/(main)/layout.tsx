@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
 import { useAuthStore } from "@/features/auth/stores/authStore";
 import { authApi } from "@/features/auth/api/authApi";
+import { buildAuthPageHref } from "@/features/auth/utils/navigation";
 
 // Spring Security 필터와 동일한 역할: 비인증 접근 차단
 // AT는 Zustand(메모리)에만 존재 → 미들웨어 대신 레이아웃에서 검증
@@ -33,7 +34,12 @@ export default function MainLayout({
       })
       .catch(() => {
         clearAuth();
-        router.replace(`/${locale}/login`);
+        const returnTo = `${window.location.pathname}${window.location.search}`;
+        router.replace(buildAuthPageHref({
+          locale,
+          page: "login",
+          returnTo,
+        }));
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

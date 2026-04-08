@@ -39,6 +39,7 @@ class PasswordResetServiceTest {
         email = "test@example.com",
         encodedPassword = "encoded-old-password",
         role = "USER",
+        tokenVersion = 0L,
         emailVerified = true,
         provider = null,
     )

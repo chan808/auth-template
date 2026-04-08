@@ -15,7 +15,11 @@ const providers = [
   { id: "kakao",  label: "Kakao" },
 ] as const;
 
-export default function SocialLoginButtons() {
+interface SocialLoginButtonsProps {
+  returnTo?: string | null;
+}
+
+export default function SocialLoginButtons({ returnTo }: SocialLoginButtonsProps) {
   const t = useTranslations("auth.social");
   const locale = useLocale();
   const visibleProviders = providers.filter(({ id }) =>
@@ -25,6 +29,9 @@ export default function SocialLoginButtons() {
   const handleLogin = (provider: string) => {
     const url = new URL(`${BACKEND_URL}/oauth2/authorization/${provider}`);
     url.searchParams.set("locale", locale);
+    if (returnTo) {
+      url.searchParams.set("returnTo", returnTo);
+    }
     window.location.assign(url.toString());
   };
 

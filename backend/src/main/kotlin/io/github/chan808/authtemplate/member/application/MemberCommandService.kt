@@ -17,6 +17,8 @@ import org.springframework.context.ApplicationEventPublisher
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDateTime
+import java.util.UUID
 
 @Service
 @Transactional(readOnly = true)
@@ -35,17 +37,15 @@ class MemberCommandService(
     fun signup(request: SignupRequest, ip: String): MemberResponse {
         signupRateLimitService.check(ip)
         val email = request.email.lowercase().trim()
-        memberRepository.findByEmail(email)?.let { existing ->
+        memberRepository.findByEmailAndWithdrawnAtIsNull(email)?.let { existing ->
             if (existing.emailVerified || existing.isOAuthAccount) {
                 domainMetrics.recordSignupFailure("duplicate_email")
                 throw MemberException(ErrorCode.EMAIL_ALREADY_EXISTS)
             }
 
-            breachedPasswordChecker.check(request.password, email)
-            existing.changePassword(passwordEncoder.encode(request.password) ?: error("PasswordEncoder returned null"))
             emailVerificationService.sendVerification(existing.id, existing.email)
             domainMetrics.recordSignupSuccess()
-            log.info("[AUTH] unverified signup retried memberId={}", existing.id)
+            log.info("[AUTH] unverified signup retried memberId={} passwordUnchanged=true", existing.id)
             return MemberResponse.from(existing)
         }
 
@@ -78,6 +78,7 @@ class MemberCommandService(
         }
         breachedPasswordChecker.check(request.newPassword, member.email)
         member.changePassword(passwordEncoder.encode(request.newPassword) ?: error("PasswordEncoder returned null"))
+        member.incrementTokenVersion()
         eventPublisher.publishEvent(PasswordChangedEvent(memberId))
         domainMetrics.recordPasswordChange()
         log.info("[AUTH] password changed memberId={}", memberId)
@@ -86,14 +87,19 @@ class MemberCommandService(
     @Transactional
     fun withdraw(memberId: Long) {
         val member = getById(memberId)
+        val withdrawnAt = LocalDateTime.now()
+        val uniqueSuffix = UUID.randomUUID().toString()
+        val anonymizedEmail = "withdrawn+${member.id}.$uniqueSuffix@example.invalid"
+        val anonymizedProviderId = member.providerId?.let { "withdrawn:${member.id}:$uniqueSuffix" }
+        member.incrementTokenVersion()
+        member.withdraw(anonymizedEmail, anonymizedProviderId, withdrawnAt)
         eventPublisher.publishEvent(MemberWithdrawnEvent(memberId))
-        memberRepository.delete(member)
         domainMetrics.recordWithdrawal()
         log.info("[MEMBER] member withdrawn memberId={}", memberId)
     }
 
     fun getById(memberId: Long): Member =
-        memberRepository.findById(memberId).orElseThrow { MemberException(ErrorCode.MEMBER_NOT_FOUND) }
+        memberRepository.findByIdAndWithdrawnAtIsNull(memberId) ?: throw MemberException(ErrorCode.MEMBER_NOT_FOUND)
 
     fun getMyInfo(memberId: Long): MemberResponse = MemberResponse.from(getById(memberId))
 }

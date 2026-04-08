@@ -5,6 +5,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale } from "next-intl";
 import { authApi } from "@/features/auth/api/authApi";
 import { useAuthStore } from "@/features/auth/stores/authStore";
+import {
+  buildAuthPageHref,
+  normalizeReturnTo,
+  resolvePostLoginPath,
+} from "@/features/auth/utils/navigation";
 
 export default function OAuthCallbackClient() {
   const router = useRouter();
@@ -19,14 +24,24 @@ export default function OAuthCallbackClient() {
 
     const code = searchParams.get("code");
     const error = searchParams.get("error");
+    const returnTo = normalizeReturnTo(searchParams.get("returnTo"));
 
     if (error) {
-      router.replace(`/${locale}/login?error=${encodeURIComponent(error)}`);
+      router.replace(buildAuthPageHref({
+        locale,
+        page: "login",
+        returnTo,
+        error,
+      }));
       return;
     }
 
     if (!code) {
-      router.replace(`/${locale}/login`);
+      router.replace(buildAuthPageHref({
+        locale,
+        page: "login",
+        returnTo,
+      }));
       return;
     }
 
@@ -35,10 +50,15 @@ export default function OAuthCallbackClient() {
       .then((res) => {
         const at = res.data.data?.accessToken;
         if (at) setAccessToken(at);
-        router.replace(`/${locale}/dashboard`);
+        router.replace(resolvePostLoginPath(locale, returnTo));
       })
       .catch(() => {
-        router.replace(`/${locale}/login?error=${encodeURIComponent("OAuth login failed.")}`);
+        router.replace(buildAuthPageHref({
+          locale,
+          page: "login",
+          returnTo,
+          error: "OAuth login failed.",
+        }));
       });
   }, [locale, router, searchParams, setAccessToken]);
 

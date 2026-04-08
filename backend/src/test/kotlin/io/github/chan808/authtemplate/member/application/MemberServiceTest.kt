@@ -19,8 +19,10 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.security.crypto.password.PasswordEncoder
-import java.util.Optional
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 
 class MemberCommandServiceTest {
 
@@ -45,7 +47,7 @@ class MemberCommandServiceTest {
     fun `duplicate email throws email already exists`() {
         every { signupRateLimitService.check(any()) } just Runs
         every {
-            memberRepository.findByEmail("test@example.com")
+            memberRepository.findByEmailAndWithdrawnAtIsNull("test@example.com")
         } returns Member(email = "test@example.com", password = "encoded", emailVerified = true, id = 1L)
 
         val ex = assertThrows<MemberException> {
@@ -57,7 +59,7 @@ class MemberCommandServiceTest {
     @Test
     fun `email is normalized to lowercase on signup`() {
         every { signupRateLimitService.check(any()) } just Runs
-        every { memberRepository.findByEmail("test@example.com") } returns null
+        every { memberRepository.findByEmailAndWithdrawnAtIsNull("test@example.com") } returns null
         every { breachedPasswordChecker.check(any(), any()) } just Runs
         every { passwordEncoder.encode(any()) } returns "encoded"
         every { memberRepository.save(any()) } answers {
@@ -79,25 +81,50 @@ class MemberCommandServiceTest {
             id = 1L,
         )
         every { signupRateLimitService.check(any()) } just Runs
-        every { memberRepository.findByEmail("test@example.com") } returns existing
-        every { breachedPasswordChecker.check(any(), any()) } just Runs
-        every { passwordEncoder.encode("Password1!") } returns "new-encoded"
+        every { memberRepository.findByEmailAndWithdrawnAtIsNull("test@example.com") } returns existing
         every { emailVerificationService.sendVerification(1L, "test@example.com") } just Runs
 
         val response = memberCommandService.signup(SignupRequest("test@example.com", "Password1!"), "127.0.0.1")
 
         assertEquals(existing.id, response.id)
-        assertEquals("new-encoded", existing.password)
+        assertEquals("old-encoded", existing.password)
         verify { emailVerificationService.sendVerification(1L, "test@example.com") }
         verify(exactly = 0) { memberRepository.save(any()) }
+        verify(exactly = 0) { breachedPasswordChecker.check(any(), any()) }
+        verify(exactly = 0) { passwordEncoder.encode(any()) }
     }
 
     @Test
     fun `missing member id throws member not found`() {
-        every { memberRepository.findById(999L) } returns Optional.empty()
+        every { memberRepository.findByIdAndWithdrawnAtIsNull(999L) } returns null
 
         val ex = assertThrows<MemberException> { memberCommandService.getById(999L) }
         assertEquals(ErrorCode.MEMBER_NOT_FOUND, ex.errorCode)
+    }
+
+    @Test
+    fun `withdraw anonymizes member and keeps row for soft delete`() {
+        val member = Member(
+            email = "test@example.com",
+            password = "encoded",
+            provider = "GOOGLE",
+            providerId = "provider-user-id",
+            nickname = "tester",
+            emailVerified = true,
+            id = 1L,
+        )
+        every { memberRepository.findByIdAndWithdrawnAtIsNull(1L) } returns member
+        every { eventPublisher.publishEvent(any<Any>()) } just Runs
+
+        memberCommandService.withdraw(1L)
+
+        assertNotEquals("test@example.com", member.email)
+        assertNotEquals("provider-user-id", member.providerId)
+        assertNull(member.password)
+        assertNull(member.nickname)
+        assertEquals(false, member.emailVerified)
+        assertNotNull(member.withdrawnAt)
+        verify(exactly = 0) { memberRepository.delete(any()) }
     }
 
     private fun Member.copyForTest(id: Long): Member = Member(
@@ -108,6 +135,7 @@ class MemberCommandServiceTest {
         providerId = this.providerId,
         nickname = this.nickname,
         role = this.role,
+        withdrawnAt = this.withdrawnAt,
         id = id,
     )
 }

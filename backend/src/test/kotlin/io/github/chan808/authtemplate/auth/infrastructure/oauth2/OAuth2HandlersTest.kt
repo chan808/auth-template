@@ -38,6 +38,10 @@ class OAuth2HandlersTest {
         }
         val request = MockHttpServletRequest().apply {
             getSession(true)!!.setAttribute(LocaleAwareOAuth2AuthorizationRequestResolver.SESSION_KEY, "en")
+            getSession(false)!!.setAttribute(
+                LocaleAwareOAuth2AuthorizationRequestResolver.RETURN_TO_SESSION_KEY,
+                "/rooms/alpha",
+            )
         }
         val response = MockHttpServletResponse()
 
@@ -47,6 +51,7 @@ class OAuth2HandlersTest {
         handler.onAuthenticationSuccess(request, response, authentication)
 
         assertTrue(response.redirectedUrl?.startsWith("http://localhost:3000/en/auth/callback?code=") == true)
+        assertTrue(response.redirectedUrl?.contains("returnTo=/rooms/alpha") == true)
         verify { oAuthCodeStore.save(any(), "access-token") }
     }
 
@@ -58,6 +63,10 @@ class OAuth2HandlersTest {
         )
         val request = MockHttpServletRequest().apply {
             getSession(true)!!.setAttribute(LocaleAwareOAuth2AuthorizationRequestResolver.SESSION_KEY, "en")
+            getSession(false)!!.setAttribute(
+                LocaleAwareOAuth2AuthorizationRequestResolver.RETURN_TO_SESSION_KEY,
+                "/rooms/alpha",
+            )
         }
         val response = MockHttpServletResponse()
         val exception = object : AuthenticationException("failed") {}
@@ -65,5 +74,6 @@ class OAuth2HandlersTest {
         handler.onAuthenticationFailure(request, response, exception)
 
         assertTrue(response.redirectedUrl?.startsWith("http://localhost:3000/en/login?error=") == true)
+        assertTrue(response.redirectedUrl?.contains("returnTo=/rooms/alpha") == true)
     }
 }

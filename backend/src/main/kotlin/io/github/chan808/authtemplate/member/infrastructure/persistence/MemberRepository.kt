@@ -5,8 +5,9 @@ import org.springframework.data.jpa.repository.JpaRepository
 import java.time.LocalDateTime
 
 interface MemberRepository : JpaRepository<Member, Long> {
-    fun findByEmail(email: String): Member?
+    fun findByIdAndWithdrawnAtIsNull(id: Long): Member?
+    fun findByEmailAndWithdrawnAtIsNull(email: String): Member?
     fun existsByEmail(email: String): Boolean
-    fun findByProviderAndProviderId(provider: String, providerId: String): Member?
-    fun findAllByEmailVerifiedFalseAndProviderIsNullAndCreatedAtBefore(cutoff: LocalDateTime): List<Member>
+    fun findByProviderAndProviderIdAndWithdrawnAtIsNull(provider: String, providerId: String): Member?
+    fun findAllByEmailVerifiedFalseAndProviderIsNullAndWithdrawnAtIsNullAndCreatedAtBefore(cutoff: LocalDateTime): List<Member>
 }

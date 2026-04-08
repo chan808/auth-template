@@ -7,7 +7,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.security.core.AuthenticationException
 import org.springframework.security.web.authentication.AuthenticationFailureHandler
 import org.springframework.stereotype.Component
-import java.net.URLEncoder
+import org.springframework.web.util.UriComponentsBuilder
 
 @Component
 class OAuth2FailureHandler(
@@ -29,9 +29,19 @@ class OAuth2FailureHandler(
         }
 
         val locale = resolveLocale(request)
-        val encoded = URLEncoder.encode(message, "UTF-8")
+        val returnTo = resolveReturnTo(request)
         log.warn("[AUTH] OAuth2 login failure locale={} message={}", locale, message)
-        response.sendRedirect("$frontendBaseUrl/$locale/login?error=$encoded")
+        response.sendRedirect(
+            UriComponentsBuilder.fromUriString("$frontendBaseUrl/$locale/login")
+                .queryParam("error", message)
+                .apply {
+                    if (returnTo != null) {
+                        queryParam("returnTo", returnTo)
+                    }
+                }
+                .build()
+                .toUriString(),
+        )
     }
 
     private fun resolveLocale(request: HttpServletRequest): String {
@@ -39,5 +49,12 @@ class OAuth2FailureHandler(
         val locale = session.getAttribute(LocaleAwareOAuth2AuthorizationRequestResolver.SESSION_KEY) as? String
         session.removeAttribute(LocaleAwareOAuth2AuthorizationRequestResolver.SESSION_KEY)
         return locale ?: defaultLocale
+    }
+
+    private fun resolveReturnTo(request: HttpServletRequest): String? {
+        val session = request.getSession(false) ?: return null
+        val returnTo = session.getAttribute(LocaleAwareOAuth2AuthorizationRequestResolver.RETURN_TO_SESSION_KEY) as? String
+        session.removeAttribute(LocaleAwareOAuth2AuthorizationRequestResolver.RETURN_TO_SESSION_KEY)
+        return LocaleAwareOAuth2AuthorizationRequestResolver.normalizeReturnTo(returnTo)
     }
 }

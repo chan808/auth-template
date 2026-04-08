@@ -29,6 +29,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/shared/components/ui/card";
+import {
+  buildAuthPageHref,
+  normalizeReturnTo,
+} from "../utils/navigation";
 
 const schema = z.object({
   email: z.string().email(),
@@ -43,6 +47,8 @@ export default function LoginForm() {
   const searchParams = useSearchParams();
   const resetSuccess = searchParams.get("reset") === "success";
   const oauthError = searchParams.get("error");
+  const returnTo = normalizeReturnTo(searchParams.get("returnTo"));
+  const initialEmail = searchParams.get("email")?.trim() ?? "";
   const { login } = useAuth();
   const { secondsLeft, startCooldown, isCoolingDown } = useCooldown();
   const [pendingVerificationEmail, setPendingVerificationEmail] = useState("");
@@ -51,12 +57,13 @@ export default function LoginForm() {
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { email: initialEmail, password: "" },
   });
+  const currentEmail = form.watch("email")?.trim() ?? "";
 
   const onSubmit = async (data: FormData) => {
     try {
-      await login(data);
+      await login(data, { returnTo });
     } catch (error) {
       const response = (error as AxiosError<{ detail?: string; title?: string }>).response?.data;
       const detail = response?.detail;
@@ -171,16 +178,26 @@ export default function LoginForm() {
             >
               {t("submitButton")}
             </Button>
-            <SocialLoginButtons />
+            <SocialLoginButtons returnTo={returnTo} />
             <div className="flex flex-col gap-1 text-center text-sm text-muted-foreground">
               <Link
-                href={`/${locale}/signup`}
+                href={buildAuthPageHref({
+                  locale,
+                  page: "signup",
+                  returnTo,
+                  email: currentEmail,
+                })}
                 className="hover:underline hover:text-foreground"
               >
                 {t("signupLink")}
               </Link>
               <Link
-                href={`/${locale}/forgot-password`}
+                href={buildAuthPageHref({
+                  locale,
+                  page: "forgot-password",
+                  returnTo,
+                  email: currentEmail,
+                })}
                 className="hover:underline hover:text-foreground"
               >
                 {t("forgotPasswordLink")}

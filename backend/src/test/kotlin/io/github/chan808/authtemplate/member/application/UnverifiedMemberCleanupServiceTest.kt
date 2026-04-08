@@ -27,7 +27,7 @@ class UnverifiedMemberCleanupServiceTest {
             Member(email = "b@example.com", emailVerified = false, id = 2L),
         )
         every {
-            memberRepository.findAllByEmailVerifiedFalseAndProviderIsNullAndCreatedAtBefore(cutoff)
+            memberRepository.findAllByEmailVerifiedFalseAndProviderIsNullAndWithdrawnAtIsNullAndCreatedAtBefore(cutoff)
         } returns stale
         every { emailVerificationStore.deleteByMemberId(any()) } just Runs
         every { memberRepository.deleteAllInBatch(stale) } just Runs
@@ -44,7 +44,7 @@ class UnverifiedMemberCleanupServiceTest {
     fun `cleanup returns zero when there is nothing to delete`() {
         val cutoff = LocalDateTime.of(2026, 3, 10, 0, 0)
         every {
-            memberRepository.findAllByEmailVerifiedFalseAndProviderIsNullAndCreatedAtBefore(cutoff)
+            memberRepository.findAllByEmailVerifiedFalseAndProviderIsNullAndWithdrawnAtIsNullAndCreatedAtBefore(cutoff)
         } returns emptyList()
 
         val deleted = service.cleanupOlderThan(cutoff)

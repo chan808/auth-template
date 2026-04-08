@@ -34,7 +34,7 @@ class EmailVerificationService(
         val normalizedEmail = email.lowercase().trim()
         resendRateLimitService.check(ip, normalizedEmail)
 
-        val member = memberRepository.findByEmail(normalizedEmail) ?: run {
+        val member = memberRepository.findByEmailAndWithdrawnAtIsNull(normalizedEmail) ?: run {
             domainMetrics.recordEmailVerificationResend("ignored_unknown_email")
             return
         }
@@ -61,8 +61,8 @@ class EmailVerificationService(
             log.warn("[AUTH] 이메일 인증 실패 reason=INVALID_TOKEN")
             throw MemberException(ErrorCode.VERIFICATION_TOKEN_INVALID)
         }
-        val member = memberRepository.findById(memberId)
-            .orElseThrow { MemberException(ErrorCode.MEMBER_NOT_FOUND) }
+        val member = memberRepository.findByIdAndWithdrawnAtIsNull(memberId)
+            ?: throw MemberException(ErrorCode.MEMBER_NOT_FOUND)
         if (member.emailVerified) {
             log.warn("[AUTH] 이메일 인증 실패 reason=ALREADY_VERIFIED memberId={}", memberId)
             throw MemberException(ErrorCode.EMAIL_ALREADY_VERIFIED)

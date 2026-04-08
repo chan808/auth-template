@@ -29,10 +29,10 @@ class MemberQueryService(
     private val log = LoggerFactory.getLogger(MemberQueryService::class.java)
 
     override fun findAuthMemberByEmail(email: String): AuthMemberView? =
-        memberRepository.findByEmail(email)?.toAuthView()
+        memberRepository.findByEmailAndWithdrawnAtIsNull(email)?.toAuthView()
 
     override fun findAuthMemberById(id: Long): AuthMemberView? =
-        memberRepository.findById(id).orElse(null)?.toAuthView()
+        memberRepository.findByIdAndWithdrawnAtIsNull(id)?.toAuthView()
 
     @Transactional
     override fun verifyEmail(token: String) {
@@ -45,8 +45,8 @@ class MemberQueryService(
 
     @Transactional
     override fun resetPassword(memberId: Long, newRawPassword: String) {
-        val member = memberRepository.findById(memberId)
-            .orElseThrow { AuthException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID) }
+        val member = memberRepository.findByIdAndWithdrawnAtIsNull(memberId)
+            ?: throw AuthException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID)
         if (member.isOAuthAccount) {
             domainMetrics.recordPasswordResetConfirmation("blocked_oauth_account")
             throw AuthException(ErrorCode.OAUTH_PASSWORD_RESET_NOT_ALLOWED)
@@ -54,6 +54,7 @@ class MemberQueryService(
 
         breachedPasswordChecker.check(newRawPassword, member.email)
         member.changePassword(passwordEncoder.encode(newRawPassword) ?: error("PasswordEncoder returned null"))
+        member.incrementTokenVersion()
         eventPublisher.publishEvent(PasswordChangedEvent(memberId))
         domainMetrics.recordPasswordChange()
     }
@@ -65,10 +66,10 @@ class MemberQueryService(
         providerId: String,
         nickname: String?,
     ): AuthMemberView {
-        memberRepository.findByProviderAndProviderId(provider, providerId)
+        memberRepository.findByProviderAndProviderIdAndWithdrawnAtIsNull(provider, providerId)
             ?.let { return it.toAuthView() }
 
-        memberRepository.findByEmail(email)?.let { existing ->
+        memberRepository.findByEmailAndWithdrawnAtIsNull(email)?.let { existing ->
             val existingProvider = existing.provider ?: "LOCAL"
             log.warn(
                 "[AUTH] OAuth email conflict email={} existingProvider={} requestedProvider={}",
@@ -97,6 +98,7 @@ class MemberQueryService(
         email = email,
         encodedPassword = password,
         role = role.name,
+        tokenVersion = tokenVersion,
         emailVerified = emailVerified,
         provider = provider,
     )

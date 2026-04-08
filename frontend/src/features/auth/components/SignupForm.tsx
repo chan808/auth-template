@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -28,6 +29,10 @@ import {
   CardTitle,
 } from "@/shared/components/ui/card";
 import { passwordSchema } from "@/shared/lib/validations";
+import {
+  buildAuthPageHref,
+  normalizeReturnTo,
+} from "@/features/auth/utils/navigation";
 
 const schema = z.object({
   email: z.string().email(),
@@ -39,6 +44,9 @@ type FormData = z.infer<typeof schema>;
 export default function SignupForm() {
   const t = useTranslations("auth.signup");
   const locale = useLocale();
+  const searchParams = useSearchParams();
+  const returnTo = normalizeReturnTo(searchParams.get("returnTo"));
+  const initialEmail = searchParams.get("email")?.trim() ?? "";
   const { secondsLeft, startCooldown, isCoolingDown } = useCooldown();
   const [submittedEmail, setSubmittedEmail] = useState("");
   const [resendStatus, setResendStatus] = useState<"idle" | "sent">("idle");
@@ -46,8 +54,9 @@ export default function SignupForm() {
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { email: initialEmail, password: "" },
   });
+  const currentEmail = form.watch("email")?.trim() ?? "";
 
   const onSubmit = async (data: FormData) => {
     try {
@@ -106,7 +115,12 @@ export default function SignupForm() {
               : t("resend.action")}
           </Button>
           <Link
-            href={`/${locale}/login`}
+            href={buildAuthPageHref({
+              locale,
+              page: "login",
+              returnTo,
+              email: submittedEmail,
+            })}
             className="block text-sm text-muted-foreground hover:text-foreground hover:underline"
           >
             {t("loginLink")}
@@ -168,7 +182,12 @@ export default function SignupForm() {
             </Button>
             <p className="text-center text-sm text-muted-foreground">
               <Link
-                href={`/${locale}/login`}
+                href={buildAuthPageHref({
+                  locale,
+                  page: "login",
+                  returnTo,
+                  email: currentEmail,
+                })}
                 className="hover:underline hover:text-foreground"
               >
                 {t("loginLink")}
