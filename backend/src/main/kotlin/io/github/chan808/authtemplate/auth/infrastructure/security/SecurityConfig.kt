@@ -71,6 +71,10 @@ class SecurityConfig(
                 } else {
                     headers.httpStrictTransportSecurity { it.disable() }
                 }
+                headers.contentSecurityPolicy { it.policyDirectives(CONTENT_SECURITY_POLICY) }
+                headers.frameOptions { it.deny() }
+                headers.contentTypeOptions { }
+                headers.permissionsPolicyHeader { it.policy(PERMISSIONS_POLICY) }
                 headers.referrerPolicy { it.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER) }
             }
             .authorizeHttpRequests {
@@ -149,5 +153,20 @@ class SecurityConfig(
         return UrlBasedCorsConfigurationSource().also {
             it.registerCorsConfiguration("/**", config)
         }
+    }
+
+    companion object {
+        private const val CONTENT_SECURITY_POLICY =
+            "default-src 'self'; " +
+                "script-src 'self' 'unsafe-inline'; " +
+                "style-src 'self' 'unsafe-inline'; " +
+                "img-src 'self' data:; " +
+                "font-src 'self' data:; " +
+                "connect-src 'self'; " +
+                "object-src 'none'; " +
+                "base-uri 'self'; " +
+                "frame-ancestors 'none'"
+
+        private const val PERMISSIONS_POLICY = "camera=(), microphone=(), geolocation=()"
     }
 }

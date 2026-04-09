@@ -3,8 +3,6 @@ package io.github.chan808.authtemplate.member.application
 import io.github.chan808.authtemplate.common.AuthException
 import io.github.chan808.authtemplate.common.ErrorCode
 import io.github.chan808.authtemplate.common.metrics.DomainMetrics
-import io.github.chan808.authtemplate.member.application.EmailVerificationService
-import io.github.chan808.authtemplate.member.application.MemberQueryService
 import io.github.chan808.authtemplate.member.domain.Member
 import io.github.chan808.authtemplate.member.infrastructure.persistence.MemberRepository
 import io.github.chan808.authtemplate.member.infrastructure.security.BreachedPasswordChecker
@@ -22,7 +20,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 
-class MemberQueryServiceTest {
+class MemberAuthFacadeTest {
 
     private val memberRepository: MemberRepository = mockk()
     private val emailVerificationService: EmailVerificationService = mockk()
@@ -30,7 +28,7 @@ class MemberQueryServiceTest {
     private val passwordEncoder: PasswordEncoder = mockk()
     private val eventPublisher: ApplicationEventPublisher = mockk()
     private val domainMetrics: DomainMetrics = mockk(relaxed = true)
-    private val service = MemberQueryService(
+    private val service = MemberAuthFacade(
         memberRepository,
         emailVerificationService,
         breachedPasswordChecker,
@@ -77,7 +75,7 @@ class MemberQueryServiceTest {
 
     @Test
     fun `verifyEmail uses writable transaction`() {
-        val method = MemberQueryService::class.java.getMethod("verifyEmail", String::class.java)
+        val method = MemberAuthFacade::class.java.getMethod("verifyEmail", String::class.java)
 
         val tx = method.getAnnotation(Transactional::class.java)
 

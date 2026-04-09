@@ -15,9 +15,13 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
+/**
+ * Auth module accesses member state only through this facade so read/write auth flows
+ * stay separated from the member HTTP command service.
+ */
 @Service
 @Transactional(readOnly = true)
-class MemberQueryService(
+class MemberAuthFacade(
     private val memberRepository: MemberRepository,
     private val emailVerificationService: EmailVerificationService,
     private val breachedPasswordChecker: BreachedPasswordChecker,
@@ -26,7 +30,7 @@ class MemberQueryService(
     private val domainMetrics: DomainMetrics,
 ) : MemberApi {
 
-    private val log = LoggerFactory.getLogger(MemberQueryService::class.java)
+    private val log = LoggerFactory.getLogger(MemberAuthFacade::class.java)
 
     override fun findAuthMemberByEmail(email: String): AuthMemberView? =
         memberRepository.findByEmailAndWithdrawnAtIsNull(email)?.toAuthView()

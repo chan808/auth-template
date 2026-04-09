@@ -3,6 +3,7 @@ package io.github.chan808.authtemplate.auth.presentation
 import com.ninjasquad.springmockk.MockkBean
 import io.github.chan808.authtemplate.auth.application.AuthCommandService
 import io.github.chan808.authtemplate.auth.application.PasswordResetService
+import io.github.chan808.authtemplate.auth.application.port.TokenStore
 import io.github.chan808.authtemplate.auth.infrastructure.redis.OAuthCodeStore
 import io.github.chan808.authtemplate.auth.infrastructure.security.JwtProvider
 import io.github.chan808.authtemplate.auth.infrastructure.security.SecurityConfig
@@ -48,6 +49,7 @@ class AuthControllerTest {
     @MockkBean lateinit var passwordResetService: PasswordResetService
     @MockkBean lateinit var clientIpResolver: ClientIpResolver
     @MockkBean lateinit var oAuthCodeStore: OAuthCodeStore
+    @MockkBean(relaxed = true) lateinit var tokenStore: TokenStore
     @MockkBean lateinit var jwtProvider: JwtProvider
     @MockkBean(relaxed = true) lateinit var securityExceptionHandler: SecurityExceptionHandler
 
@@ -68,6 +70,10 @@ class AuthControllerTest {
             jsonPath("$.data.accessToken") { value("access-token") }
             header { string("Cache-Control", "no-store") }
             header { string("Pragma", "no-cache") }
+            header { string("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'") }
+            header { string("Permissions-Policy", "camera=(), microphone=(), geolocation=()") }
+            header { string("X-Frame-Options", "DENY") }
+            header { string("X-Content-Type-Options", "nosniff") }
             cookie { exists("refresh_token") }
             cookie { httpOnly("refresh_token", true) }
         }
@@ -80,6 +86,23 @@ class AuthControllerTest {
             content = """{"email":"not-an-email","password":"password123"}"""
         }.andExpect {
             status { isBadRequest() }
+        }
+    }
+
+    @Test
+    fun `malformed login payload returns 400`() {
+        mockMvc.post("/api/auth/login") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"email":"test@example.com","password":"""
+        }.andExpect {
+            status { isBadRequest() }
+        }
+    }
+
+    @Test
+    fun `unsupported login method returns 405`() {
+        mockMvc.get("/api/auth/login").andExpect {
+            status { isMethodNotAllowed() }
         }
     }
 
