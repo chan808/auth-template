@@ -13,6 +13,17 @@ This frontend includes the auth flows themselves plus a small sample authenticat
 - protected route redirect with preserved `returnTo`
 - sample authenticated account workspace at `/{locale}/dashboard`
 
+## Auth Protection Model
+
+This starter is intentionally `CSR-first` for authenticated product areas.
+
+- `middleware.ts` only handles locale routing
+- authenticated app protection happens in [`src/app/[locale]/(main)/layout.tsx`](src/app/[locale]/(main)/layout.tsx)
+- that layout restores auth on the client by calling `reissue()`
+- if recovery fails, the user is redirected to login with `returnTo`
+
+If a new project needs SSR or server-component authorization before hydration, treat that as an extension to add at project start, not something this template already guarantees. See [AUTH_MODEL.md](./AUTH_MODEL.md).
+
 ## Important Defaults
 
 - `returnTo` is preserved when a protected route redirects to login
@@ -60,6 +71,7 @@ Usually you should:
 - replace the sample dashboard with your own authenticated home
 - update `NEXT_PUBLIC_AUTH_HOME_PATH`
 - keep `returnTo` support for invitations and deep links
+- decide early whether your project stays with the default CSR auth shell or needs SSR-protected routes
 
 ## Verify
 

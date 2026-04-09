@@ -37,6 +37,7 @@ Less ideal:
 - Protected routes should preserve `returnTo`.
 - Post-login navigation should use `returnTo` first, then the configured authenticated home path.
 - Bundled authenticated pages are examples, not mandatory product structure.
+- The default frontend auth protection model is client-side for authenticated app areas.
 
 ## Included
 
@@ -79,6 +80,7 @@ auth-template/
 |   |-- messages
 |   |-- public
 |   |-- .env.example
+|   |-- AUTH_MODEL.md
 |   `-- README.md
 `-- README.md
 ```
@@ -158,8 +160,10 @@ pnpm build
 - OAuth and HIBP external lookup can be controlled with explicit feature flags.
 - The current OAuth locale and return-to handoff uses the server session during the OAuth round-trip.
 - The bundled `dashboard` route is a sample authenticated area and should usually be replaced in a real project.
+- Authenticated route protection in the frontend is intentionally CSR-first. Server-component or SSR-protected product pages need extra project-specific work.
 
 ## Documents
 
 - [backend/OBSERVABILITY.md](backend/OBSERVABILITY.md)
 - [frontend/README.md](frontend/README.md)
+- [frontend/AUTH_MODEL.md](frontend/AUTH_MODEL.md)

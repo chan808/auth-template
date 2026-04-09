@@ -17,7 +17,7 @@ export const authApi = {
     }),
 
   verifyEmail: (token: string) =>
-    api.get<ApiResponse<void>>(`/api/auth/verify-email?token=${token}`),
+    api.post<ApiResponse<void>>("/api/auth/verify-email", { token }),
 
   resendVerification: (email: string) =>
     api.post<ApiResponse<void>>("/api/auth/verify-email/resend", { email }),

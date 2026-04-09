@@ -11,6 +11,7 @@ import io.github.chan808.authtemplate.member.api.MemberApi
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.http.CacheControl
 import org.springframework.http.HttpHeaders
 import org.springframework.http.ResponseCookie
 import org.springframework.http.ResponseEntity
@@ -43,7 +44,7 @@ class AuthController(
     ): ResponseEntity<ApiResponse<TokenResponse>> {
         val (at, rt) = authCommandService.login(request, clientIpResolver.resolve(servletRequest))
         response.addHeader(HttpHeaders.SET_COOKIE, buildRtCookie(rt, rtTtl).toString())
-        return ResponseEntity.ok(ApiResponse.of(TokenResponse(at)))
+        return tokenResponse(at)
     }
 
     @PostMapping("/reissue")
@@ -55,7 +56,7 @@ class AuthController(
         val refreshToken = rtToken ?: throw AuthException(ErrorCode.REFRESH_TOKEN_NOT_FOUND)
         val (at, newRt) = authCommandService.reissue(refreshToken)
         response.addHeader(HttpHeaders.SET_COOKIE, buildRtCookie(newRt, rtTtl).toString())
-        return ResponseEntity.ok(ApiResponse.of(TokenResponse(at)))
+        return tokenResponse(at)
     }
 
     @PostMapping("/logout")
@@ -69,9 +70,9 @@ class AuthController(
         return ResponseEntity.ok(ApiResponse.success())
     }
 
-    @GetMapping("/verify-email")
-    fun verifyEmail(@RequestParam token: String): ResponseEntity<ApiResponse<Unit>> {
-        memberApi.verifyEmail(token)
+    @PostMapping("/verify-email")
+    fun verifyEmail(@RequestBody @Valid request: VerifyEmailRequest): ResponseEntity<ApiResponse<Unit>> {
+        memberApi.verifyEmail(request.token)
         return ResponseEntity.ok(ApiResponse.success())
     }
 
@@ -97,7 +98,7 @@ class AuthController(
     fun exchangeOAuthCode(@RequestParam code: String): ResponseEntity<ApiResponse<TokenResponse>> {
         val accessToken = oAuthCodeStore.findAndDelete(code)
             ?: throw AuthException(ErrorCode.OAUTH_CODE_NOT_FOUND)
-        return ResponseEntity.ok(ApiResponse.of(TokenResponse(accessToken)))
+        return tokenResponse(accessToken)
     }
 
     @PostMapping("/password-reset/confirm")
@@ -107,6 +108,12 @@ class AuthController(
         passwordResetService.confirmReset(request.token, request.newPassword)
         return ResponseEntity.ok(ApiResponse.success())
     }
+
+    private fun tokenResponse(accessToken: String): ResponseEntity<ApiResponse<TokenResponse>> =
+        ResponseEntity.ok()
+            .cacheControl(CacheControl.noStore())
+            .header(HttpHeaders.PRAGMA, "no-cache")
+            .body(ApiResponse.of(TokenResponse(accessToken)))
 
     private fun buildRtCookie(value: String, maxAge: Long): ResponseCookie =
         ResponseCookie.from(RT_COOKIE_NAME, value)

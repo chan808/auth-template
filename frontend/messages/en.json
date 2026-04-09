@@ -60,6 +60,11 @@
       "loginWith": "Continue with {provider}"
     },
     "verifyEmail": {
+      "idle": {
+        "title": "Confirm Email Verification",
+        "description": "Open the verification page and confirm the action to complete email verification.",
+        "action": "Verify Email"
+      },
       "loading": {
         "title": "Verifying...",
         "description": "Please wait a moment."

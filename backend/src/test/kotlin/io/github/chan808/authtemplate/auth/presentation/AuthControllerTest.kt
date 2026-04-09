@@ -66,6 +66,8 @@ class AuthControllerTest {
         }.andExpect {
             status { isOk() }
             jsonPath("$.data.accessToken") { value("access-token") }
+            header { string("Cache-Control", "no-store") }
+            header { string("Pragma", "no-cache") }
             cookie { exists("refresh_token") }
             cookie { httpOnly("refresh_token", true) }
         }
@@ -117,6 +119,8 @@ class AuthControllerTest {
         }.andExpect {
             status { isOk() }
             jsonPath("$.data.accessToken") { value("new-access-token") }
+            header { string("Cache-Control", "no-store") }
+            header { string("Pragma", "no-cache") }
             cookie { exists("refresh_token") }
         }
     }
@@ -165,7 +169,10 @@ class AuthControllerTest {
     fun `verify email delegates to member api`() {
         every { memberApi.verifyEmail("valid-token") } just Runs
 
-        mockMvc.get("/api/auth/verify-email?token=valid-token")
+        mockMvc.post("/api/auth/verify-email") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"token":"valid-token"}"""
+        }
             .andExpect { status { isOk() } }
     }
 
@@ -173,7 +180,10 @@ class AuthControllerTest {
     fun `invalid verification token returns 400`() {
         every { memberApi.verifyEmail("bad-token") } throws MemberException(ErrorCode.VERIFICATION_TOKEN_INVALID)
 
-        mockMvc.get("/api/auth/verify-email?token=bad-token")
+        mockMvc.post("/api/auth/verify-email") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"token":"bad-token"}"""
+        }
             .andExpect { status { isBadRequest() } }
     }
 
@@ -247,6 +257,8 @@ class AuthControllerTest {
             .andExpect {
                 status { isOk() }
                 jsonPath("$.data.accessToken") { value("access-token") }
+                header { string("Cache-Control", "no-store") }
+                header { string("Pragma", "no-cache") }
             }
     }
 

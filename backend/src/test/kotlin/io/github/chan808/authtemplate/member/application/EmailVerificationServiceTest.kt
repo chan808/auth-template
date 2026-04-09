@@ -16,7 +16,9 @@ import io.mockk.verify
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.springframework.context.ApplicationEventPublisher
+import org.springframework.transaction.annotation.Transactional
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class EmailVerificationServiceTest {
@@ -80,6 +82,15 @@ class EmailVerificationServiceTest {
 
         val ex = assertThrows<MemberException> { service.verify("token") }
         assertEquals(ErrorCode.EMAIL_ALREADY_VERIFIED, ex.errorCode)
+    }
+
+    @Test
+    fun `resend runs in a transaction so after-commit listeners can execute`() {
+        val annotation = EmailVerificationService::class.java
+            .getDeclaredMethod("resend", String::class.java, String::class.java)
+            .getAnnotation(Transactional::class.java)
+
+        assertNotNull(annotation)
     }
 
     @Test

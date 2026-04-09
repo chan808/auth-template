@@ -7,8 +7,9 @@ import { useAuthStore } from "@/features/auth/stores/authStore";
 import { authApi } from "@/features/auth/api/authApi";
 import { buildAuthPageHref } from "@/features/auth/utils/navigation";
 
-// Spring Security 필터와 동일한 역할: 비인증 접근 차단
-// AT는 Zustand(메모리)에만 존재 → 미들웨어 대신 레이아웃에서 검증
+// This starter protects the authenticated shell on the client.
+// Access tokens live in memory, so the layout restores auth with reissue()
+// after hydration instead of performing server-side authorization here.
 export default function MainLayout({
   children,
 }: {
@@ -20,12 +21,11 @@ export default function MainLayout({
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    // getState(): 구독 없이 현재 값 일회성 확인 — 마운트 이후 accessToken 변경에 반응할 필요 없음
     if (useAuthStore.getState().accessToken) {
       setReady(true);
       return;
     }
-    // 페이지 새로고침 시 RT 쿠키로 AT 복구
+
     authApi
       .reissue()
       .then(({ data }) => {
@@ -35,11 +35,13 @@ export default function MainLayout({
       .catch(() => {
         clearAuth();
         const returnTo = `${window.location.pathname}${window.location.search}`;
-        router.replace(buildAuthPageHref({
-          locale,
-          page: "login",
-          returnTo,
-        }));
+        router.replace(
+          buildAuthPageHref({
+            locale,
+            page: "login",
+            returnTo,
+          }),
+        );
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

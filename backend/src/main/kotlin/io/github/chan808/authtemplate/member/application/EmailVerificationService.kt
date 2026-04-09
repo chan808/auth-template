@@ -30,6 +30,7 @@ class EmailVerificationService(
         eventPublisher.publishEvent(MemberRegisteredEvent(email, token))
     }
 
+    @Transactional
     fun resend(email: String, ip: String) {
         val normalizedEmail = email.lowercase().trim()
         resendRateLimitService.check(ip, normalizedEmail)
