@@ -1,6 +1,7 @@
 package io.github.chan808.authtemplate.member.presentation
 
 import com.ninjasquad.springmockk.MockkBean
+import io.github.chan808.authtemplate.auth.application.port.TokenStore
 import io.github.chan808.authtemplate.auth.infrastructure.security.JwtProvider
 import io.github.chan808.authtemplate.auth.infrastructure.security.SecurityConfig
 import io.github.chan808.authtemplate.auth.infrastructure.security.SecurityExceptionHandler
@@ -49,6 +50,7 @@ class MemberControllerTest {
     @MockkBean lateinit var memberCommandService: MemberCommandService
     @MockkBean lateinit var memberApi: MemberApi
     @MockkBean lateinit var clientIpResolver: ClientIpResolver
+    @MockkBean(relaxed = true) lateinit var tokenStore: TokenStore
     @MockkBean lateinit var jwtProvider: JwtProvider
 
     private val testMemberResponse = MemberResponse(
@@ -65,6 +67,8 @@ class MemberControllerTest {
     @BeforeEach
     fun setup() {
         every { clientIpResolver.resolve(any()) } returns "127.0.0.1"
+        every { tokenStore.findAccessTokenVersion(any()) } returns null
+        every { tokenStore.cacheAccessTokenVersion(any(), any()) } just Runs
         val claims = mockk<Claims>()
         every { claims.subject } returns "1"
         every { claims["role"] } returns "USER"
@@ -83,14 +87,15 @@ class MemberControllerTest {
 
     @Test
     fun `signup returns 201`() {
-        every { memberCommandService.signup(any(), any()) } returns testMemberResponse
+        every { memberCommandService.signup(any(), any()) } just Runs
 
         mockMvc.post("/api/members") {
             contentType = MediaType.APPLICATION_JSON
             content = """{"email":"test@example.com","password":"Password1!"}"""
         }.andExpect {
             status { isCreated() }
-            jsonPath("$.data.email") { value("test@example.com") }
+            jsonPath("$.data.email") { doesNotExist() }
+            jsonPath("$.message") { exists() }
         }
     }
 

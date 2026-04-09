@@ -4,10 +4,12 @@ import io.github.chan808.authtemplate.common.ErrorCode
 import io.github.chan808.authtemplate.common.MemberException
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.http.client.SimpleClientHttpRequestFactory
+import org.springframework.http.client.JdkClientHttpRequestFactory
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
 import java.security.MessageDigest
+import java.net.http.HttpClient
+import java.time.Duration
 
 @Component
 class BreachedPasswordChecker(
@@ -16,9 +18,12 @@ class BreachedPasswordChecker(
 ) {
     private val restClient = RestClient.builder()
         .requestFactory(
-            SimpleClientHttpRequestFactory().apply {
-                setConnectTimeout(2_000)
-                setReadTimeout(2_000)
+            JdkClientHttpRequestFactory(
+                HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(2))
+                    .build(),
+            ).apply {
+                setReadTimeout(Duration.ofSeconds(2))
             },
         )
         .build()

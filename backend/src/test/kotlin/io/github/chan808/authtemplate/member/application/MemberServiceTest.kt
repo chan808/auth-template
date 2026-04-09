@@ -84,9 +84,8 @@ class MemberCommandServiceTest {
         every { memberRepository.findByEmailAndWithdrawnAtIsNull("test@example.com") } returns existing
         every { emailVerificationService.sendVerification(1L, "test@example.com") } just Runs
 
-        val response = memberCommandService.signup(SignupRequest("test@example.com", "Password1!"), "127.0.0.1")
+        memberCommandService.signup(SignupRequest("test@example.com", "Password1!"), "127.0.0.1")
 
-        assertEquals(existing.id, response.id)
         assertEquals("old-encoded", existing.password)
         verify { emailVerificationService.sendVerification(1L, "test@example.com") }
         verify(exactly = 0) { memberRepository.save(any()) }

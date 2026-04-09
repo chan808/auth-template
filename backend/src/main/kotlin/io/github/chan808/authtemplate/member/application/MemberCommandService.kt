@@ -34,7 +34,7 @@ class MemberCommandService(
     private val log = LoggerFactory.getLogger(MemberCommandService::class.java)
 
     @Transactional
-    fun signup(request: SignupRequest, ip: String): MemberResponse {
+    fun signup(request: SignupRequest, ip: String) {
         signupRateLimitService.check(ip)
         val email = request.email.lowercase().trim()
         memberRepository.findByEmailAndWithdrawnAtIsNull(email)?.let { existing ->
@@ -46,7 +46,7 @@ class MemberCommandService(
             emailVerificationService.sendVerification(existing.id, existing.email)
             domainMetrics.recordSignupSuccess()
             log.info("[AUTH] unverified signup retried memberId={} passwordUnchanged=true", existing.id)
-            return MemberResponse.from(existing)
+            return
         }
 
         breachedPasswordChecker.check(request.password, email)
@@ -58,7 +58,7 @@ class MemberCommandService(
         )
         emailVerificationService.sendVerification(member.id, member.email)
         domainMetrics.recordSignupSuccess()
-        return MemberResponse.from(member)
+        log.info("[AUTH] signup accepted memberId={}", member.id)
     }
 
     @Transactional

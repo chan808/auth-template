@@ -30,8 +30,10 @@ class MemberController(
     fun signup(
         @RequestBody @Valid request: SignupRequest,
         servletRequest: HttpServletRequest,
-    ): ResponseEntity<ApiResponse<MemberResponse>> =
-        ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(memberCommandService.signup(request, clientIpResolver.resolve(servletRequest))))
+    ): ResponseEntity<ApiResponse<Unit>> {
+        memberCommandService.signup(request, clientIpResolver.resolve(servletRequest))
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success())
+    }
 
     // principal = memberId(Long): JwtAuthenticationFilter에서 subject를 toLong()으로 설정
     @GetMapping("/me")

@@ -3,9 +3,7 @@ import { ApiResponse } from "@/shared/types/api";
 import { MemberResponse, SignupRequest } from "@/features/auth/types/auth";
 
 export const memberApi = {
-  // 인증 불필요 — SecurityConfig에서 permitAll
-  signup: (data: SignupRequest) =>
-    api.post<ApiResponse<MemberResponse>>("/api/members", data),
+  signup: (data: SignupRequest) => api.post<ApiResponse<void>>("/api/members", data),
 
   getMyInfo: () => api.get<ApiResponse<MemberResponse>>("/api/members/me"),
 
