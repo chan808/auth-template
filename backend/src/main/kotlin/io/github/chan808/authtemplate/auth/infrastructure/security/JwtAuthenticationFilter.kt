@@ -1,5 +1,6 @@
 package io.github.chan808.authtemplate.auth.infrastructure.security
 
+import io.github.chan808.authtemplate.auth.application.port.TokenStore
 import io.github.chan808.authtemplate.common.ErrorCode
 import io.github.chan808.authtemplate.member.api.MemberApi
 import io.jsonwebtoken.ExpiredJwtException
@@ -16,6 +17,7 @@ import org.springframework.web.filter.OncePerRequestFilter
 class JwtAuthenticationFilter(
     private val jwtProvider: JwtProvider,
     private val memberApi: MemberApi,
+    private val tokenStore: TokenStore,
 ) : OncePerRequestFilter() {
 
     override fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, chain: FilterChain) {
@@ -23,10 +25,13 @@ class JwtAuthenticationFilter(
             try {
                 val claims = jwtProvider.validate(token)
                 val memberId = claims.subject.toLong()
-                val tokenVersion = (claims["tokenVersion"] as? Number)?.toLong()
-                val member = memberApi.findAuthMemberById(memberId)
+                val tokenVersion = (claims["tokenVersion"] as? Number)?.toLong() ?: throw JwtException("Missing tokenVersion claim")
+                val currentTokenVersion = tokenStore.findAccessTokenVersion(memberId)
+                    ?: memberApi.findAuthMemberById(memberId)?.also {
+                        tokenStore.cacheAccessTokenVersion(memberId, it.tokenVersion)
+                    }?.tokenVersion
 
-                if (tokenVersion == null || member == null || member.tokenVersion != tokenVersion) {
+                if (currentTokenVersion == null || currentTokenVersion != tokenVersion) {
                     SecurityContextHolder.clearContext()
                     request.setAttribute("jwt-error", ErrorCode.TOKEN_INVALID)
                     chain.doFilter(request, response)
@@ -40,8 +45,10 @@ class JwtAuthenticationFilter(
                 )
                 SecurityContextHolder.getContext().authentication = auth
             } catch (ex: ExpiredJwtException) {
+                SecurityContextHolder.clearContext()
                 request.setAttribute("jwt-error", ErrorCode.TOKEN_EXPIRED)
             } catch (ex: JwtException) {
+                SecurityContextHolder.clearContext()
                 request.setAttribute("jwt-error", ErrorCode.TOKEN_INVALID)
             }
         }

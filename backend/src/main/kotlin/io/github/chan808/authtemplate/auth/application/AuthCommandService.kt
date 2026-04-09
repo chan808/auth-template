@@ -96,9 +96,9 @@ class AuthCommandService(
                     hashToken(rtToken).toByteArray(Charsets.UTF_8),
                 )
             ) {
-                tokenStore.deleteSession(session.memberId, sid)
+                tokenStore.deleteAllSessionsForMember(session.memberId)
                 domainMetrics.recordRefreshTokenReissueFailure("token_mismatch")
-                log.error("[SECURITY] refresh token mismatch detected sid={}", sid)
+                log.error("[SECURITY] refresh token reuse detected, all sessions revoked memberId={}", session.memberId)
                 throw AuthException(ErrorCode.REFRESH_TOKEN_MISMATCH)
             }
 

@@ -88,7 +88,7 @@ class AuthCommandServiceTest {
     }
 
     @Test
-    fun `refresh token mismatch revokes session and throws mismatch`() {
+    fun `refresh token mismatch revokes all member sessions and throws mismatch`() {
         val sid = UUID.randomUUID().toString()
         val session = RefreshTokenSession(
             memberId = 1L,
@@ -98,13 +98,13 @@ class AuthCommandServiceTest {
         )
         every { tokenStore.tryLock(sid) } returns true
         every { tokenStore.find(sid) } returns session
-        every { tokenStore.deleteSession(1L, sid) } just Runs
+        every { tokenStore.deleteAllSessionsForMember(1L) } just Runs
         every { tokenStore.releaseLock(sid) } just Runs
 
         val ex = assertThrows<AuthException> { authCommandService.reissue("$sid.actualrandompart") }
 
         assertEquals(ErrorCode.REFRESH_TOKEN_MISMATCH, ex.errorCode)
-        verify { tokenStore.deleteSession(1L, sid) }
+        verify { tokenStore.deleteAllSessionsForMember(1L) }
     }
 
     @Test

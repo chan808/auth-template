@@ -146,4 +146,20 @@ class RefreshTokenStoreTest {
     fun `delete all sessions on empty member does nothing`() {
         store.deleteAllSessionsForMember(99L)
     }
+
+    @Test
+    fun `access token version can be cached and read back`() {
+        store.cacheAccessTokenVersion(1L, 7L)
+
+        assertEquals(7L, store.findAccessTokenVersion(1L))
+    }
+
+    @Test
+    fun `deleting access token version removes cached value`() {
+        store.cacheAccessTokenVersion(1L, 7L)
+
+        store.deleteAccessTokenVersion(1L)
+
+        assertNull(store.findAccessTokenVersion(1L))
+    }
 }
