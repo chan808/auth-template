@@ -24,6 +24,14 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
+/**
+ * CSRF 방어 설계 메모:
+ * `/reissue`, `/logout`은 커스텀 헤더 `X-CSRF-GUARD` 존재 여부로 CSRF를 막는다.
+ * 브라우저는 CORS preflight 없이 단순 요청(simple request)에 커스텀 헤더를 붙일 수 없기 때문에,
+ * 헤더의 "존재"만으로도 cross-site 자동 전송을 차단할 수 있다.
+ * 따라서 헤더 값 자체는 의도적으로 검사하지 않으며, `@RequestHeader(required = true)`가
+ * 부재 시 400을 내주는 것만으로 방어가 성립한다.
+ */
 @RestController
 @RequestMapping("/api/auth")
 class AuthController(
@@ -50,7 +58,7 @@ class AuthController(
     @PostMapping("/reissue")
     fun reissue(
         @CookieValue("refresh_token", required = false) rtToken: String?,
-        @RequestHeader("X-CSRF-GUARD") csrfGuard: String,
+        @Suppress("UNUSED_PARAMETER") @RequestHeader("X-CSRF-GUARD") csrfGuard: String,
         response: jakarta.servlet.http.HttpServletResponse,
     ): ResponseEntity<ApiResponse<TokenResponse>> {
         val refreshToken = rtToken ?: throw AuthException(ErrorCode.REFRESH_TOKEN_NOT_FOUND)
@@ -62,7 +70,7 @@ class AuthController(
     @PostMapping("/logout")
     fun logout(
         @CookieValue("refresh_token", required = false) rtToken: String?,
-        @RequestHeader("X-CSRF-GUARD") csrfGuard: String,
+        @Suppress("UNUSED_PARAMETER") @RequestHeader("X-CSRF-GUARD") csrfGuard: String,
         response: jakarta.servlet.http.HttpServletResponse,
     ): ResponseEntity<ApiResponse<Unit>> {
         authCommandService.logout(rtToken)

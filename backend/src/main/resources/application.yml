@@ -9,6 +9,18 @@ spring:
     username: ${MYSQL_USER:root}
     password: ${MYSQL_PASSWORD:root_pass}
     driver-class-name: com.mysql.cj.jdbc.Driver
+    # Hikari 기본 튜닝 포인트. 운영 부하와 DB 커넥션 한도에 맞춰 오버라이드할 것.
+    # 공식 가이드: (core_count * 2) + effective_spindle_count 를 출발점으로 삼는다.
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:10}
+      minimum-idle: ${DB_POOL_MIN_IDLE:10}
+      connection-timeout: ${DB_POOL_CONNECTION_TIMEOUT_MS:3000}
+      validation-timeout: ${DB_POOL_VALIDATION_TIMEOUT_MS:2000}
+      idle-timeout: ${DB_POOL_IDLE_TIMEOUT_MS:600000}
+      max-lifetime: ${DB_POOL_MAX_LIFETIME_MS:1800000}
+      # leak-detection-threshold는 스테이징/개발에서만 켜는 걸 권장 (기본 0 = 비활성)
+      leak-detection-threshold: ${DB_POOL_LEAK_DETECTION_MS:0}
+      pool-name: AuthTemplateHikariPool
   jpa:
     open-in-view: false
     hibernate:

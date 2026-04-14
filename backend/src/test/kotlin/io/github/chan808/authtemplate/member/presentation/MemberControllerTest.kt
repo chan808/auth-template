@@ -99,18 +99,8 @@ class MemberControllerTest {
         }
     }
 
-    @Test
-    fun `duplicate email returns 409`() {
-        every { memberCommandService.signup(any(), any()) } throws MemberException(ErrorCode.EMAIL_ALREADY_EXISTS)
-
-        mockMvc.post("/api/members") {
-            contentType = MediaType.APPLICATION_JSON
-            content = """{"email":"test@example.com","password":"Password1!"}"""
-        }.andExpect {
-            status { isConflict() }
-            jsonPath("$.title") { value("EMAIL_ALREADY_EXISTS") }
-        }
-    }
+    // 주의: signup은 사용자 열거 방지를 위해 중복 가입 요청에도 201을 반환한다.
+    // 기존 "duplicate email returns 409" 테스트는 열거 방지 정책 도입으로 제거됨.
 
     @Test
     fun `too short password returns 400`() {

@@ -21,7 +21,12 @@ class RefreshTokenStore(
         private const val MEMBER_SESSIONS_PREFIX = "MEMBER_SESSIONS:"
         private const val MEMBER_SESSIONS_TTL = 30L * 24 * 3600
         private const val ACCESS_TOKEN_VERSION_PREFIX = "ATV:"
-        private const val ACCESS_TOKEN_VERSION_TTL = 30L * 24 * 3600
+
+        // ATV 캐시는 AT 검증 시 DB 조회를 줄이는 것만이 목적이다.
+        // 비밀번호 변경/탈퇴 이벤트에서 캐시 무효화가 실패했을 경우 stale version이 허용되는
+        // 최대 시간이 이 TTL이므로, AT 자체 수명(약 30분)에 가깝게 1시간으로 제한한다.
+        // 캐시 만료 후에는 DB에서 다시 읽어 재캐시되며 기능상 영향은 없다.
+        private const val ACCESS_TOKEN_VERSION_TTL = 3600L
 
         private val DELETE_ALL_SESSIONS_SCRIPT = DefaultRedisScript(
             """

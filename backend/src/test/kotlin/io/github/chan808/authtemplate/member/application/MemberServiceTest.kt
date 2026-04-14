@@ -44,16 +44,20 @@ class MemberCommandServiceTest {
     )
 
     @Test
-    fun `duplicate email throws email already exists`() {
+    fun `duplicate verified email returns silently without side effects (user enumeration prevention)`() {
         every { signupRateLimitService.check(any()) } just Runs
-        every {
-            memberRepository.findByEmailAndWithdrawnAtIsNull("test@example.com")
-        } returns Member(email = "test@example.com", password = "encoded", emailVerified = true, id = 1L)
+        val existing = Member(email = "test@example.com", password = "encoded", emailVerified = true, id = 1L)
+        every { memberRepository.findByEmailAndWithdrawnAtIsNull("test@example.com") } returns existing
 
-        val ex = assertThrows<MemberException> {
-            memberCommandService.signup(SignupRequest("test@example.com", "Password1!"), "127.0.0.1")
-        }
-        assertEquals(ErrorCode.EMAIL_ALREADY_EXISTS, ex.errorCode)
+        // 예외가 발생하지 않고 정상 종료되어야 한다.
+        memberCommandService.signup(SignupRequest("test@example.com", "Password1!"), "127.0.0.1")
+
+        // 기존 비밀번호가 그대로여야 하고, 어떤 메일도 발송되지 않아야 한다.
+        assertEquals("encoded", existing.password)
+        verify(exactly = 0) { emailVerificationService.sendVerification(any(), any()) }
+        verify(exactly = 0) { memberRepository.save(any()) }
+        verify(exactly = 0) { breachedPasswordChecker.check(any(), any()) }
+        verify(exactly = 0) { passwordEncoder.encode(any()) }
     }
 
     @Test

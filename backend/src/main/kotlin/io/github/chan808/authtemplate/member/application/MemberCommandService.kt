@@ -39,8 +39,11 @@ class MemberCommandService(
         val email = request.email.lowercase().trim()
         memberRepository.findByEmailAndWithdrawnAtIsNull(email)?.let { existing ->
             if (existing.emailVerified || existing.isOAuthAccount) {
-                domainMetrics.recordSignupFailure("duplicate_email")
-                throw MemberException(ErrorCode.EMAIL_ALREADY_EXISTS)
+                // 사용자 열거 방지: 이미 가입이 완료된(또는 OAuth) 계정에도 신규 가입과 동일한 201 응답을 반환한다.
+                // 기존 비밀번호나 프로필은 절대 건드리지 않고, 어떠한 메일도 발송하지 않는다.
+                domainMetrics.recordSignupFailure("duplicate_email_silenced")
+                log.info("[AUTH] signup attempted on existing account memberId={}", existing.id)
+                return
             }
 
             emailVerificationService.sendVerification(existing.id, existing.email)

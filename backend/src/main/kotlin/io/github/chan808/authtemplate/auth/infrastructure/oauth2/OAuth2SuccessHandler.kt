@@ -2,11 +2,12 @@ package io.github.chan808.authtemplate.auth.infrastructure.oauth2
 
 import io.github.chan808.authtemplate.auth.application.AuthCommandService
 import io.github.chan808.authtemplate.auth.infrastructure.redis.OAuthCodeStore
-import jakarta.servlet.http.Cookie
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.http.HttpHeaders
+import org.springframework.http.ResponseCookie
 import org.springframework.security.core.Authentication
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler
 import org.springframework.stereotype.Component
@@ -33,13 +34,15 @@ class OAuth2SuccessHandler(
         val oAuth2User = authentication.principal as AuthenticatedOAuth2User
         val (accessToken, rawRt) = authService.issueTokensForOAuth(oAuth2User.memberId)
 
-        response.addCookie(Cookie("refresh_token", rawRt).apply {
-            isHttpOnly = true
-            secure = cookieSecure
-            path = "/api/auth"
-            maxAge = rtExpiry.toInt()
-            setAttribute("SameSite", "Strict")
-        })
+        // 나머지 엔드포인트와 동일하게 ResponseCookie로 SameSite=Strict를 직접 설정한다.
+        val rtCookie = ResponseCookie.from("refresh_token", rawRt)
+            .httpOnly(true)
+            .secure(cookieSecure)
+            .sameSite("Strict")
+            .path("/api/auth")
+            .maxAge(rtExpiry)
+            .build()
+        response.addHeader(HttpHeaders.SET_COOKIE, rtCookie.toString())
 
         val code = UUID.randomUUID().toString()
         oAuthCodeStore.save(code, accessToken)
